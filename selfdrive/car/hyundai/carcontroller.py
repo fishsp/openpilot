@@ -282,16 +282,51 @@ class CarController(CarControllerBase):
       if self.frame % 2 == 0 and self.CP.openpilotLongitudinalControl:
         if self.hkg_can_smooth_stop:
           stopping = stopping and CS.out.vEgoRaw < 0.05
+          
+        # 动态限制 jerk 和 accel
+        speed = CS.out.vEgoRaw  # 当前车速（m/s）
 
-        # TODO: unclear if this is needed
-        jerk = 3.0 if actuators.longControlState == LongCtrlState.pid else 1.0
-        
-        #hlx add
-        if actuators.accel > 0:
-          jerk = 0.1  # 加速时的 jerk 值
-        if accel > 0.5:
-          accel = 0.5 # 加速度不大于1
-        #
+        # 如果是减速操作（accel 为负数），不对 jerk 和 accel 进行任何限制
+        if actuators.accel < 0:
+          jerk = 3.0 if actuators.longControlState == LongCtrlState.pid else 1.0
+        else:
+          # 判断是否为 PID 控制状态
+          if actuators.longControlState == LongCtrlState.pid:
+            # 在 PID 控制状态下，jerk 最高为 3，根据车速动态调整
+            jerk_max = 3.0  # PID 状态下最大 jerk 为 3.0
+          else:
+            # 在非 PID 控制状态下，jerk 最高为 1，根据车速动态调整
+            jerk_max = 1.0  # 非 PID 状态下最大 jerk 为 1.0
+
+          # 指数衰减函数，限制 jerk
+          min_speed = 8.33  # 30 km/h
+          max_speed = 22.22  # 80 km/h
+          jerk = jerk_max
+
+          if speed < min_speed:  # 车速小于 30 km/h（约 8.33 m/s）
+            jerk = jerk_max  # 在低速时，jerk 保持最大值
+          elif speed < max_speed:  # 车速在 30 km/h 到 80 km/h（约 8.33 m/s 到 22.22 m/s）之间
+            # 使用指数衰减函数来计算 jerk
+            jerk = jerk_max * math.exp(-0.2 * (speed - min_speed))  # 根据车速动态减少 jerk
+          else:  # 车速大于 80 km/h（约 22.22 m/s）
+            jerk = 0.1  # 在高速时，jerk 最小值为 0.1
+
+          # 确保 jerk 不小于 0.1
+          jerk = max(jerk, 0.1)
+
+          # 动态限制加速度（PID 状态下，允许更高的加速度，非 PID 状态下限制较低）
+          if speed < 8.33:  # 车速小于 30 km/h
+            accel_limit = CarControllerParams.ACCEL_MAX  # 不限制加速度
+          else:
+            # 车速大于 30 km/h 时，对加速度进行指数限制
+            accel_limit = CarControllerParams.ACCEL_MAX * math.exp(0.1 * (speed - 8.33))  # 指数级增长
+
+          # 确保加速度不会小于 0.5
+          accel_limit = max(accel_limit, 0.5)
+
+          # 使用 clip 限制加速度，确保加速度在指定范围内
+          #accel = clip(actuators.accel, -accel_limit, accel_limit)
+          accel = clip(actuators.accel, CarControllerParams.ACCEL_MIN, accel_limit)
         
         use_fca = self.CP.flags & HyundaiFlags.USE_FCA.value
         can_sends.extend(hyundaican.create_acc_commands(self.packer, CC.enabled and CS.out.cruiseState.enabled, accel, jerk, int(self.frame / 2),
