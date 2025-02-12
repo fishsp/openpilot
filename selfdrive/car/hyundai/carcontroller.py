@@ -285,48 +285,64 @@ class CarController(CarControllerBase):
           
         # 动态限制 jerk 和 accel
         speed = CS.out.vEgoRaw  # 当前车速（m/s）
+        
+        # 定义车速区间对应的 jerk 和 accel 限制值
+        # 对于 PID 状态，最大 jerk 为 3.0
+        pid_speed_limits = {
+          8.33: {"jerk": 3.0, "accel": 2.0},  # 30 km/h (8.33 m/s)
+          10.0: {"jerk": 2.0, "accel": 1.8},  # 35 km/h
+          11.11: {"jerk": 1.5, "accel": 1.6},  # 40 km/h
+          12.22: {"jerk": 1.0, "accel": 1.4},  # 45 km/h
+          13.33: {"jerk": 0.6, "accel": 1.2},  # 50 km/h
+          14.44: {"jerk": 0.4, "accel": 1.0},  # 55 km/h
+          15.55: {"jerk": 0.2, "accel": 0.7},  # 60 km/h
+          16.67: {"jerk": 0.1, "accel": 0.6},  # 65 km/h
+          17.78: {"jerk": 0.1, "accel": 0.6},  # 70 km/h
+          18.89: {"jerk": 0.1, "accel": 0.5},  # 75 km/h
+          22.22: {"jerk": 0.1, "accel": 0.5},  # 80 km/h
+        }
 
-        # 如果是减速操作（accel 为负数），不对 jerk 和 accel 进行任何限制
+        # 对于非 PID 状态，最大 jerk 为 1.0
+        non_pid_speed_limits = {
+          8.33: {"jerk": 1.0, "accel": 2.0},  # 30 km/h (8.33 m/s)
+          10.0: {"jerk": 0.9, "accel": 1.8},  # 35 km/h
+          11.11: {"jerk": 0.8, "accel": 1.6},  # 40 km/h
+          12.22: {"jerk": 0.7, "accel": 1.4},  # 45 km/h
+          13.33: {"jerk": 0.6, "accel": 1.2},  # 50 km/h
+          14.44: {"jerk": 0.5, "accel": 1.0},  # 55 km/h
+          15.55: {"jerk": 0.4, "accel": 0.7},  # 60 km/h
+          16.67: {"jerk": 0.3, "accel": 0.6},  # 65 km/h
+          17.78: {"jerk": 0.2, "accel": 0.6},  # 70 km/h
+          18.89: {"jerk": 0.1, "accel": 0.5},  # 75 km/h
+          22.22: {"jerk": 0.1, "accel": 0.5},  # 80 km/h
+        }
+
+        # 如果是减速操作（accel 为负数），不对 jerk 进行任何限制
         if actuators.accel < 0:
           jerk = 3.0 if actuators.longControlState == LongCtrlState.pid else 1.0
         else:
-          # 判断是否为 PID 控制状态
+          # 根据 longControlState 判断适用的车速区间（PID 或非 PID）
           if actuators.longControlState == LongCtrlState.pid:
-            # 在 PID 控制状态下，jerk 最高为 3，根据车速动态调整
-            jerk_max = 3.0  # PID 状态下最大 jerk 为 3.0
+            speed_limits = pid_speed_limits  # 使用 PID 状态下的限制表
           else:
-            # 在非 PID 控制状态下，jerk 最高为 1，根据车速动态调整
-            jerk_max = 1.0  # 非 PID 状态下最大 jerk 为 1.0
+            speed_limits = non_pid_speed_limits  # 使用非 PID 状态下的限制表
 
-          # 指数衰减函数，限制 jerk
-          min_speed = 8.33  # 30 km/h
-          max_speed = 22.22  # 80 km/h
-          jerk = jerk_max
-
-          if speed < min_speed:  # 车速小于 30 km/h（约 8.33 m/s）
-            jerk = jerk_max  # 在低速时，jerk 保持最大值
-          elif speed < max_speed:  # 车速在 30 km/h 到 80 km/h（约 8.33 m/s 到 22.22 m/s）之间
-            # 使用指数衰减函数来计算 jerk
-            jerk = jerk_max * math.exp(-0.2 * (speed - min_speed))  # 根据车速动态减少 jerk
-          else:  # 车速大于 80 km/h（约 22.22 m/s）
-            jerk = 0.1  # 在高速时，jerk 最小值为 0.1
-
-          # 确保 jerk 不小于 0.1
-          jerk = max(jerk, 0.1)
-
-          # 动态限制加速度（PID 状态下，允许更高的加速度，非 PID 状态下限制较低）
-          if speed < 8.33:  # 车速小于 30 km/h
-            accel_limit = CarControllerParams.ACCEL_MAX  # 不限制加速度
+          # 判断车速所在区间并根据车速设置 jerk 和 accel
+          if speed < 8.33:  # 车速小于 30 km/h (8.33 m/s)
+            jerk = speed_limits[8.33]["jerk"]  # 最大 jerk
+            accel_limit = CarControllerParams.ACCEL_MAX  # 最大加速度
+          elif speed >= 22.22:  # 车速大于 80 km/h (22.22 m/s)
+            jerk = speed_limits[22.22]["jerk"]  # 最小 jerk
+            accel_limit = 0.5  # 最小加速度
           else:
-            # 车速大于 30 km/h 时，对加速度进行指数限制
-            accel_limit = CarControllerParams.ACCEL_MAX * math.exp(0.1 * (speed - 8.33))  # 指数级增长
-
-          # 确保加速度不会小于 0.5
-          accel_limit = max(accel_limit, 0.5)
-
-          # 使用 clip 限制加速度，确保加速度在指定范围内
-          #accel = clip(actuators.accel, -accel_limit, accel_limit)
-          accel = clip(actuators.accel, CarControllerParams.ACCEL_MIN, accel_limit)
+            # 查找对应车速区间的 jerk 和 accel 限制值
+            for speed_limit, limits in reversed(sorted(speed_limits.items())):
+              if speed >= speed_limit:
+                jerk = limits["jerk"]
+                accel_limit = limits["accel"]
+                break
+        # 使用 clip 限制加速度，确保加速度在指定范围内
+        accel = clip(actuators.accel, CarControllerParams.ACCEL_MIN, accel_limit)
         
         use_fca = self.CP.flags & HyundaiFlags.USE_FCA.value
         can_sends.extend(hyundaican.create_acc_commands(self.packer, CC.enabled and CS.out.cruiseState.enabled, accel, jerk, int(self.frame / 2),
