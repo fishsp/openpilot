@@ -294,11 +294,10 @@ class CarController(CarControllerBase):
           1.11: {"jerk": 1.2, "accel": 1.4},  # 4 km/h
           1.67: {"jerk": 1.6, "accel": 1.6},  # 6 km/h
           2.22: {"jerk": 2.0, "accel": 1.8},  # 8 km/h
-          2.78: {"jerk": 3.0, "accel": 2.0},  # 10 km/h
-          2.78: {"jerk": 3.0, "accel": 2.0},  # 10 km/h
-          4.17: {"jerk": 2.9, "accel": 2.0},  # 15 km/h
-          5.56: {"jerk": 2.8, "accel": 2.0},  # 20 km/h
-          6.94: {"jerk": 2.7, "accel": 2.0},  # 25 km/h
+          2.78: {"jerk": 2.2, "accel": 2.0},  # 10 km/h
+          4.17: {"jerk": 2.6, "accel": 2.0},  # 15 km/h
+          5.56: {"jerk": 3.0, "accel": 2.0},  # 20 km/h
+          6.94: {"jerk": 2.8, "accel": 2.0},  # 25 km/h
           8.33: {"jerk": 2.6, "accel": 2.0},  # 30 km/h (8.33 m/s)
           10.0: {"jerk": 2.0, "accel": 1.8},  # 35 km/h
           11.11: {"jerk": 1.5, "accel": 1.6},  # 40 km/h
