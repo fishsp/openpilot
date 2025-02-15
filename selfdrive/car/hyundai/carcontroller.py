@@ -351,7 +351,7 @@ class CarController(CarControllerBase):
             accel_limit = speed_limits[0]["accel"]  # 最大加速度
           elif speed >= 22.22:  # 车速大于 80 km/h (22.22 m/s)
             jerk = speed_limits[22.22]["jerk"]  # 最小 jerk
-            accel_limit = 0.5  # 最小加速度
+            accel_limit = speed_limits[22.22]["accel"]  # 最小加速度
           else:
             # 查找对应车速区间的 jerk 和 accel 限制值
             for speed_limit, limits in reversed(sorted(speed_limits.items())):
