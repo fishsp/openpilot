@@ -289,50 +289,50 @@ class CarController(CarControllerBase):
         # 定义车速区间对应的 jerk 和 accel 限制值
         # 对于 PID 状态，最大 jerk 为 3.0
         pid_speed_limits = {
-          0: {"jerk": 0.8, "accel": 1.0},  # 0 km/h
-          0.56: {"jerk": 1.0, "accel": 1.2},  # 2 km/h
-          1.11: {"jerk": 1.1, "accel": 1.4},  # 4 km/h
-          1.67: {"jerk": 1.2, "accel": 1.6},  # 6 km/h
-          2.22: {"jerk": 1.4, "accel": 1.8},  # 8 km/h
-          2.78: {"jerk": 1.6, "accel": 2.0},  # 10 km/h
-          4.17: {"jerk": 1.8, "accel": 2.0},  # 15 km/h
-          5.56: {"jerk": 2.0, "accel": 2.0},  # 20 km/h
-          6.94: {"jerk": 2.0, "accel": 2.0},  # 25 km/h
-          8.33: {"jerk": 2.0, "accel": 2.0},  # 30 km/h (8.33 m/s)
-          10.0: {"jerk": 2.0, "accel": 1.8},  # 35 km/h
-          11.11: {"jerk": 1.5, "accel": 1.6},  # 40 km/h
-          12.22: {"jerk": 1.0, "accel": 1.4},  # 45 km/h
-          13.33: {"jerk": 0.6, "accel": 1.2},  # 50 km/h
-          14.44: {"jerk": 0.4, "accel": 1.0},  # 55 km/h
-          15.55: {"jerk": 0.2, "accel": 0.8},  # 60 km/h
-          16.67: {"jerk": 0.1, "accel": 0.7},  # 65 km/h
-          17.78: {"jerk": 0.1, "accel": 0.6},  # 70 km/h
-          18.89: {"jerk": 0.1, "accel": 0.5},  # 75 km/h
-          22.22: {"jerk": 0.1, "accel": 0.5},  # 80 km/h
+          0: {"jerk": 0.2, "accel": 0.8},  # 0 km/h
+          0.56: {"jerk": 0.2, "accel": 0.8},  # 2 km/h
+          1.11: {"jerk": 0.3, "accel": 0.9},  # 4 km/h
+          1.67: {"jerk": 0.3, "accel": 0.9},  # 6 km/h
+          2.22: {"jerk": 0.4, "accel": 1.0},  # 8 km/h
+          2.78: {"jerk": 0.4, "accel": 1.0},  # 10 km/h
+          4.17: {"jerk": 0.4, "accel": 1.1},  # 15 km/h
+          5.56: {"jerk": 0.4, "accel": 1.1},  # 20 km/h
+          6.94: {"jerk": 0.4, "accel": 1.2},  # 25 km/h
+          8.33: {"jerk": 0.4, "accel": 1.2},  # 30 km/h (8.33 m/s)
+          10.0: {"jerk": 0.4, "accel": 1.2},  # 35 km/h
+          11.11: {"jerk": 0.4, "accel": 1.2},  # 40 km/h
+          12.22: {"jerk": 0.4, "accel": 1.2},  # 45 km/h
+          13.33: {"jerk": 0.3, "accel": 1.1},  # 50 km/h
+          14.44: {"jerk": 0.3, "accel": 1.1},  # 55 km/h
+          15.55: {"jerk": 0.3, "accel": 1.0},  # 60 km/h
+          16.67: {"jerk": 0.3, "accel": 1.0},  # 65 km/h
+          17.78: {"jerk": 0.2, "accel": 0.8},  # 70 km/h
+          18.89: {"jerk": 0.2, "accel": 0.8},  # 75 km/h
+          22.22: {"jerk": 0.2, "accel": 0.8},  # 80 km/h
         }
 
         # 对于非 PID 状态，最大 jerk 为 1.0
         non_pid_speed_limits = {
-          0: {"jerk": 1.0, "accel": 1.0},  # 0 km/h
-          0.56: {"jerk": 1.0, "accel": 1.2},  # 2 km/h
-          1.11: {"jerk": 1.0, "accel": 1.4},  # 4 km/h
-          1.67: {"jerk": 1.0, "accel": 1.6},  # 6 km/h
-          2.22: {"jerk": 1.0, "accel": 1.8},  # 8 km/h
-          2.78: {"jerk": 1.0, "accel": 2.0},  # 10 km/h
-          4.17: {"jerk": 1.0, "accel": 2.0},  # 15 km/h
-          5.56: {"jerk": 1.0, "accel": 2.0},  # 20 km/h
-          6.94: {"jerk": 1.0, "accel": 2.0},  # 25 km/h
-          8.33: {"jerk": 1.0, "accel": 2.0},  # 30 km/h (8.33 m/s)
-          10.0: {"jerk": 0.9, "accel": 1.8},  # 35 km/h
-          11.11: {"jerk": 0.8, "accel": 1.6},  # 40 km/h
-          12.22: {"jerk": 0.7, "accel": 1.4},  # 45 km/h
-          13.33: {"jerk": 0.6, "accel": 1.2},  # 50 km/h
-          14.44: {"jerk": 0.5, "accel": 1.0},  # 55 km/h
-          15.55: {"jerk": 0.4, "accel": 0.8},  # 60 km/h
-          16.67: {"jerk": 0.3, "accel": 0.7},  # 65 km/h
-          17.78: {"jerk": 0.2, "accel": 0.6},  # 70 km/h
-          18.89: {"jerk": 0.1, "accel": 0.5},  # 75 km/h
-          22.22: {"jerk": 0.1, "accel": 0.5},  # 80 km/h
+          0: {"jerk": 0.2, "accel": 0.8},  # 0 km/h
+          0.56: {"jerk": 0.2, "accel": 0.8},  # 2 km/h
+          1.11: {"jerk": 0.3, "accel": 0.9},  # 4 km/h
+          1.67: {"jerk": 0.3, "accel": 0.9},  # 6 km/h
+          2.22: {"jerk": 0.4, "accel": 1.0},  # 8 km/h
+          2.78: {"jerk": 0.4, "accel": 1.0},  # 10 km/h
+          4.17: {"jerk": 0.4, "accel": 1.1},  # 15 km/h
+          5.56: {"jerk": 0.4, "accel": 1.1},  # 20 km/h
+          6.94: {"jerk": 0.4, "accel": 1.2},  # 25 km/h
+          8.33: {"jerk": 0.4, "accel": 1.2},  # 30 km/h (8.33 m/s)
+          10.0: {"jerk": 0.4, "accel": 1.2},  # 35 km/h
+          11.11: {"jerk": 0.4, "accel": 1.2},  # 40 km/h
+          12.22: {"jerk": 0.4, "accel": 1.2},  # 45 km/h
+          13.33: {"jerk": 0.3, "accel": 1.1},  # 50 km/h
+          14.44: {"jerk": 0.3, "accel": 1.1},  # 55 km/h
+          15.55: {"jerk": 0.3, "accel": 1.0},  # 60 km/h
+          16.67: {"jerk": 0.3, "accel": 1.0},  # 65 km/h
+          17.78: {"jerk": 0.2, "accel": 0.8},  # 70 km/h
+          18.89: {"jerk": 0.2, "accel": 0.8},  # 75 km/h
+          22.22: {"jerk": 0.2, "accel": 0.8},  # 80 km/h
         }
 
         # 如果是减速操作（accel 为负数），不对 jerk 进行任何限制
