@@ -432,23 +432,23 @@ class CarController(CarControllerBase):
           22.22: {"jerk": 0.1, "accel": 0.6},
         }
 
-        # 如果是减速操作（accel 为负数）或者没有开平滑停车，则不对 jerk 进行任何限制
-        if (actuators.accel < 0) and (not self.hkg_can_smooth_stop):
+        # 如果是减速操作（accel 为负数）则不对 jerk 进行任何限制
+        if (actuators.accel < 0) or ((not self.hkg_can_smooth_stop) and (not self.manual_parking_brake)):
           jerk = 3.0 if actuators.longControlState == LongCtrlState.pid else 1.0
         else:
-          if (not self.manual_parking_brake) and (not self.stock_long_toyota):
+          if self.hkg_can_smooth_stop and (not self.manual_parking_brake):
             # 根据 longControlState 判断适用的车速区间（PID 或非 PID）
             if actuators.longControlState == LongCtrlState.pid:
               speed_limits = pid_speed_limits  # 使用 PID 状态下的限制表
             else:
               speed_limits = non_pid_speed_limits  # 使用非 PID 状态下的限制表
-          elif (not self.manual_parking_brake) and self.stock_long_toyota:
+          elif self.hkg_can_smooth_stop and (not self.manual_parking_brake):
             # 根据 longControlState 判断适用的车速区间（PID 或非 PID）
             if actuators.longControlState == LongCtrlState.pid:
               speed_limits = pid_speed2_limits  # 使用 PID 状态下的限制表
             else:
               speed_limits = non_pid_speed2_limits  # 使用非 PID 状态下的限制表
-          elif self.manual_parking_brake and (not self.stock_long_toyota):
+          elif (not self.hkg_can_smooth_stop) and self.manual_parking_brake:
             # 根据 longControlState 判断适用的车速区间（PID 或非 PID）
             if actuators.longControlState == LongCtrlState.pid:
               speed_limits = pid_speed3_limits  # 使用 PID 状态下的限制表
@@ -457,9 +457,9 @@ class CarController(CarControllerBase):
           else:
             # 根据 longControlState 判断适用的车速区间（PID 或非 PID）
             if actuators.longControlState == LongCtrlState.pid:
-              speed_limits = pid_speed4_limits  # 使用 PID 状态下的限制表
+              speed_limits = pid_speed_limits  # 使用 PID 状态下的限制表
             else:
-              speed_limits = non_pid_speed4_limits  # 使用非 PID 状态下的限制表
+              speed_limits = non_pid_speed_limits  # 使用非 PID 状态下的限制表
           
           # 判断车速所在区间并根据车速设置 jerk 和 accel
           if speed <= 0 :  # 车速小于 0 km/h
