@@ -132,6 +132,8 @@ class CarController(CarControllerBase):
       if self.frame % 200 == 0:
         self.speed_limit_control_enabled = self.param_s.get_bool("EnableSlc")
         self.is_metric = self.param_s.get_bool("IsMetric")
+        self.manual_parking_brake = self.param_s.get_bool("SubaruManualParkingBrakeSng")
+        self.stock_long_toyota = self.param_s.get_bool("StockLongToyota")        
       self.last_speed_limit_sign_tap = self.param_s.get_bool("LastSpeedLimitSignTap")
       self.v_cruise_min = HYUNDAI_V_CRUISE_MIN[self.is_metric] * (CV.KPH_TO_MPH if not self.is_metric else 1)
 
