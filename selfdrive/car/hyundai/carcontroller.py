@@ -1,7 +1,7 @@
 from cereal import car
 import cereal.messaging as messaging
 from openpilot.common.conversions import Conversions as CV
-from openpilot.common.numpy_fast import clip
+from openpilot.common.numpy_fast import clip, interp
 from openpilot.common.params import Params
 from openpilot.common.realtime import DT_CTRL
 from opendbc.can.packer import CANPacker
@@ -63,6 +63,12 @@ class CarController(CarControllerBase):
     self.disengage_blink = 0.
     self.lat_disengage_init = False
     self.lat_active_last = False
+
+    self.accel_ramp_time = 0.0
+    self.target_accel = 0.0
+    self.jerk_target = 0.0
+    self.pcmCruiseSpeed_last = False
+    self.target_accel_limit = 0    
 
     sub_services = ['longitudinalPlanSP']
     if CP.openpilotLongitudinalControl:
@@ -436,7 +442,11 @@ class CarController(CarControllerBase):
           22.22: {"jerk": 1.0, "accel": 2.0},
         }
 
-        # 如果是减速操作（accel 为负数）则不对 jerk 进行任何限制
+        #未开启定速前 self.accel_ramp_time一直重置
+        if not self.CP.pcmCruiseSpeed:
+          self.accel_ramp_time = 0.0
+
+        # 如果是减速操作（accel 为负数）则不对 jerk和accel 进行任何限制
         if (actuators.accel < 0):
           jerk = 3.0 if actuators.longControlState == LongCtrlState.pid else 1.0
         else:
@@ -480,8 +490,34 @@ class CarController(CarControllerBase):
                 accel_limit = limits["accel"]
                 break
                 
+          #是否由未设置速度变为设置定速状态
+          cruise_speed_just_set = not self.pcmCruiseSpeed_last and self.CP.pcmCruiseSpeed
+
+          if cruise_speed_just_set:
+            self.accel_ramp_time = 0.0  # 计时清0
+            self.target_accel_limit = 0.5 #初始最大加速度限制
+            self.jerk_target = 0.1 #初始jerk目标
+          
+          if self.CP.pcmCruiseSpeed:
+            if self.accel_ramp_time < 3.0:
+              self.accel_ramp_time += DT_CTRL
+              self.accel_ramp_time = min(self.accel_ramp_time, 3.0)  # 确保不会超过 3.0
+              self.target_accel_limit = interp(self.accel_ramp_time, [0, 3.0], [0.5, max(0.5, accel_limit)])
+              self.jerk_target = interp(self.accel_ramp_time, [0, 3.0], [0.1, max(0.1, jerk)])
+            else:
+              self.target_accel_limit = accel_limit  # 3秒后直接使用PID加速度
+              self.jerk_target = jerk  # 3秒后直接使用jerk          
+          else:
+            self.target_accel_limit = accel_limit
+            self.jerk_target = jerk
+            self.accel_ramp_time = 0  # 复位
+            
+          jerk = self.jerk_target
+          accel_limit = self.target_accel_limit
+          self.pcmCruiseSpeed_last = self.CP.pcmCruiseSpeed  # 记录状态                
+                
           # 使用 clip 限制加速度，确保加速度在指定范围内
-          accel = clip(actuators.accel, CarControllerParams.ACCEL_MIN, accel_limit)        
+          accel = clip(actuators.accel, CarControllerParams.ACCEL_MIN, accel_limit)
           
         use_fca = self.CP.flags & HyundaiFlags.USE_FCA.value
         can_sends.extend(hyundaican.create_acc_commands(self.packer, CC.enabled and CS.out.cruiseState.enabled, accel, jerk, int(self.frame / 2),
