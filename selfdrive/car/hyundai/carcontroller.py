@@ -448,7 +448,11 @@ class CarController(CarControllerBase):
 
         # 如果是减速操作（accel 为负数）则不对 jerk和accel 进行任何限制
         if (actuators.accel < 0):
-          jerk = 3.0 if actuators.longControlState == LongCtrlState.pid else 1.0
+          if actuators.longControlState == LongCtrlState.pid:
+            min_accel = max(actuators.accel, CarControllerParams.ACCEL_MIN)
+            jerk = interp(min_accel, [0, CarControllerParams.ACCEL_MIN], [1.0, 3.0])
+          else:
+            jerk = 1.0
         else:
           if (not self.manual_parking_brake) and (not self.stock_long_toyota):
             # 根据 longControlState 判断适用的车速区间（PID 或非 PID）
