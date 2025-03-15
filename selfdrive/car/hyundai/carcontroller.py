@@ -72,6 +72,7 @@ class CarController(CarControllerBase):
     self.target_accel_limit = 0
 
     self.events = Events()
+    self.alert_test = False
 
     sub_services = ['longitudinalPlanSP']
     if CP.openpilotLongitudinalControl:
@@ -293,6 +294,11 @@ class CarController(CarControllerBase):
       # Parse lead distance from radarState and display the corresponding distance in the car's cluster
       if self.CP.openpilotLongitudinalControl and self.sm.updated['radarState'] and self.frame % 5 == 0:
         self.lead_distance = self.calculate_lead_distance(hud_control)
+
+      if self.frame > 500 and not self.alert_test:
+        custom_alert = CustomAlert("提示测试", "提示测试")
+        self.events.add(custom_alert)
+        self.alert_test = True
 
       if self.frame % 2 == 0 and self.CP.openpilotLongitudinalControl:
         if self.hkg_can_smooth_stop:
