@@ -513,20 +513,15 @@ class CarController(CarControllerBase):
 
           if cruise_state_change:
             self.accel_ramp_time = 0.0  # 计时清0
-            self.target_accel_limit = 0.5 #初始最大加速度限制
+            self.target_accel_limit = 0.2 #初始最大加速度限制
             self.jerk_target = 0.1 #初始jerk目标
-            #self.events.add(EventName.startupNoCar) #增加测试的用户提醒
-            #hud_control.visualAlert = VisualAlert.steerRequired
           
           if CS.out.cruiseState.enabled:
             if self.accel_ramp_time < 3.0:
               self.accel_ramp_time += DT_CTRL
               self.accel_ramp_time = min(self.accel_ramp_time, 3.0)  # 确保不会超过 3.0
-              self.target_accel_limit = interp(self.accel_ramp_time, [0, 3.0], [0.5, max(0.5, accel_limit)])
+              self.target_accel_limit = interp(self.accel_ramp_time, [0, 3.0], [0.2, max(0.2, accel_limit)])
               self.jerk_target = interp(self.accel_ramp_time, [0, 3.0], [0.1, max(0.1, jerk)])
-              #if self.accel_ramp_time >= 3.0:
-                #hud_control.visualAlert = VisualAlert.none
-                #self.events.add(EventName.startupNoCar) #增加测试的用户提醒
             else:
               self.target_accel_limit = accel_limit  # 3秒后直接使用PID加速度
               self.jerk_target = jerk  # 3秒后直接使用jerk          
