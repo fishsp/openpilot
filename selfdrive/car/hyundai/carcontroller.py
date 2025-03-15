@@ -12,8 +12,6 @@ from openpilot.selfdrive.car.hyundai.values import HyundaiFlags, HyundaiFlagsSP,
 from openpilot.selfdrive.car.interfaces import CarControllerBase
 from openpilot.selfdrive.controls.lib.drive_helpers import HYUNDAI_V_CRUISE_MIN
 from openpilot.selfdrive.controls.lib.events import CustomAlert, Events, ET
-from logging_extra import SwagLogger, SwagFormatter
-import sys
 
 
 VisualAlert = car.CarControl.HUDControl.VisualAlert
@@ -117,23 +115,6 @@ class CarController(CarControllerBase):
     self.lead_distance = 0
     self.manual_parking_brake = self.param_s.get_bool("SubaruManualParkingBrakeSng")
     self.stock_long_toyota = self.param_s.get_bool("StockLongToyota")
-    self.logger = SwagLogger()
-
-    # 设置日志处理器，将日志输出到 stdout 和 stderr
-    stdout_handler = logging.StreamHandler(sys.stdout)
-    stdout_handler.setLevel(logging.INFO)
-    stdout_handler.setFormatter(SwagFormatter(self.logger))
-
-    stderr_handler = logging.StreamHandler(sys.stderr)
-    stderr_handler.setLevel(logging.ERROR)
-    stderr_handler.setFormatter(SwagFormatter(self.logger))
-
-    self.logger.addHandler(stdout_handler)
-    self.logger.addHandler(stderr_handler)
-
-    # 设置一些全局上下文信息（例如：车型、版本等）
-    self.logger.bind_global(car_model="Santa Fe", software_version="0.9.7")
-    self.logger.info("CarController is starting...")
 
 
   def calculate_lead_distance(self, hud_control: car.CarControl.HUDControl) -> float:
