@@ -11,6 +11,7 @@ from openpilot.selfdrive.car.hyundai.hyundaicanfd import CanBus
 from openpilot.selfdrive.car.hyundai.values import HyundaiFlags, HyundaiFlagsSP, Buttons, CarControllerParams, CANFD_CAR, CAR, CAMERA_SCC_CAR, LEGACY_SAFETY_MODE_CAR
 from openpilot.selfdrive.car.interfaces import CarControllerBase
 from openpilot.selfdrive.controls.lib.drive_helpers import HYUNDAI_V_CRUISE_MIN
+from openpilot.selfdrive.controls.lib.events import CustomAlert, Event, Alert, VisualAlert
 
 VisualAlert = car.CarControl.HUDControl.VisualAlert
 LongCtrlState = car.CarControl.Actuators.LongControlState
@@ -68,7 +69,9 @@ class CarController(CarControllerBase):
     self.target_accel = 0.0
     self.jerk_target = 0.0
     self.pcmCruiseSpeed_last = False
-    self.target_accel_limit = 0    
+    self.target_accel_limit = 0
+
+    self.events = Events()
 
     sub_services = ['longitudinalPlanSP']
     if CP.openpilotLongitudinalControl:
@@ -447,7 +450,7 @@ class CarController(CarControllerBase):
           self.accel_ramp_time = 0.0
 
         # 如果是减速操作（accel 为负数）则不对 jerk和accel 进行任何限制
-        if (actuators.accel < 0):
+        if actuators.accel < 0:
           if actuators.longControlState == LongCtrlState.pid:
             min_accel = max(actuators.accel, CarControllerParams.ACCEL_MIN)
             jerk = interp(min_accel, [0, CarControllerParams.ACCEL_MIN], [1.0, 3.0])
@@ -480,6 +483,8 @@ class CarController(CarControllerBase):
               speed_limits = non_pid_speed4_limits  # 使用非 PID 状态下的限制表
           
           # 判断车速所在区间并根据车速设置 jerk 和 accel
+          accel_limit = CarControllerParams.ACCEL_MAX
+          jerk = 1.0
           if speed <= 0 :  # 车速小于 0 km/h
             jerk = speed_limits[0]["jerk"]  # 最大 jerk
             accel_limit = speed_limits[0]["accel"]  # 最大加速度
@@ -501,6 +506,8 @@ class CarController(CarControllerBase):
             self.accel_ramp_time = 0.0  # 计时清0
             self.target_accel_limit = 0.5 #初始最大加速度限制
             self.jerk_target = 0.1 #初始jerk目标
+            custom_alert = CustomAlert("用户开启巡航", "巡航提示")
+            self.events.add(custom_alert)
           
           if self.CP.pcmCruiseSpeed:
             if self.accel_ramp_time < 3.0:
@@ -508,6 +515,9 @@ class CarController(CarControllerBase):
               self.accel_ramp_time = min(self.accel_ramp_time, 3.0)  # 确保不会超过 3.0
               self.target_accel_limit = interp(self.accel_ramp_time, [0, 3.0], [0.5, max(0.5, accel_limit)])
               self.jerk_target = interp(self.accel_ramp_time, [0, 3.0], [0.1, max(0.1, jerk)])
+              if self.accel_ramp_time >= 3.0:
+                custom_alert = CustomAlert("平滑时间结束", "巡航提示")
+                self.events.add(custom_alert)
             else:
               self.target_accel_limit = accel_limit  # 3秒后直接使用PID加速度
               self.jerk_target = jerk  # 3秒后直接使用jerk          
