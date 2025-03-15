@@ -15,6 +15,7 @@ from openpilot.selfdrive.controls.lib.events import CustomAlert, Events, ET
 
 VisualAlert = car.CarControl.HUDControl.VisualAlert
 LongCtrlState = car.CarControl.Actuators.LongControlState
+EventName = car.CarEvent.EventName
 
 # EPS faults if you apply torque while the steering angle is above 90 degrees for more than 1 second
 # All slightly below EPS thresholds to avoid fault
