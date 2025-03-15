@@ -197,6 +197,12 @@ class StartupAlert(Alert):
                      alert_status, AlertSize.mid,
                      Priority.LOWER, VisualAlert.none, AudibleAlert.none, 5.),
 
+class CustomAlert(Alert):
+  def __init__(self, alert_text_1: str, alert_text_2: str = "用户自定义提示", alert_status=AlertStatus.normal):
+    super().__init__(alert_text_1, alert_text_2,
+                     alert_status, AlertSize.mid,
+                     Priority.LOWER, VisualAlert.none, AudibleAlert.none, 1.),
+
 
 # ********** helper functions **********
 def get_display_speed(speed_ms: float, metric: bool) -> str:
