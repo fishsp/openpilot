@@ -295,10 +295,10 @@ class CarController(CarControllerBase):
       if self.CP.openpilotLongitudinalControl and self.sm.updated['radarState'] and self.frame % 5 == 0:
         self.lead_distance = self.calculate_lead_distance(hud_control)
 
-      if self.frame > 500 and not self.alert_test:
-        custom_alert = CustomAlert("提示测试", "提示测试")
-        self.events.add(custom_alert)
-        self.alert_test = True
+      #if self.frame > 500 and not self.alert_test:
+      #  custom_alert = CustomAlert("提示测试", "提示测试")
+      #  self.events.add(custom_alert)
+      #  self.alert_test = True
 
       if self.frame % 2 == 0 and self.CP.openpilotLongitudinalControl:
         if self.hkg_can_smooth_stop:
@@ -512,8 +512,7 @@ class CarController(CarControllerBase):
             self.accel_ramp_time = 0.0  # 计时清0
             self.target_accel_limit = 0.5 #初始最大加速度限制
             self.jerk_target = 0.1 #初始jerk目标
-            custom_alert = CustomAlert("用户开启巡航", "巡航提示")
-            self.events.add(custom_alert)
+            self.events.add(EventName.startupNoCar) #增加测试的用户提醒
           
           if self.CP.pcmCruiseSpeed:
             if self.accel_ramp_time < 3.0:
@@ -522,8 +521,7 @@ class CarController(CarControllerBase):
               self.target_accel_limit = interp(self.accel_ramp_time, [0, 3.0], [0.5, max(0.5, accel_limit)])
               self.jerk_target = interp(self.accel_ramp_time, [0, 3.0], [0.1, max(0.1, jerk)])
               if self.accel_ramp_time >= 3.0:
-                custom_alert = CustomAlert("平滑时间结束", "巡航提示")
-                self.events.add(custom_alert)
+                self.events.add(EventName.startupNoCar) #增加测试的用户提醒
             else:
               self.target_accel_limit = accel_limit  # 3秒后直接使用PID加速度
               self.jerk_target = jerk  # 3秒后直接使用jerk          
