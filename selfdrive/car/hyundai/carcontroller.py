@@ -11,12 +11,9 @@ from openpilot.selfdrive.car.hyundai.hyundaicanfd import CanBus
 from openpilot.selfdrive.car.hyundai.values import HyundaiFlags, HyundaiFlagsSP, Buttons, CarControllerParams, CANFD_CAR, CAR, CAMERA_SCC_CAR, LEGACY_SAFETY_MODE_CAR
 from openpilot.selfdrive.car.interfaces import CarControllerBase
 from openpilot.selfdrive.controls.lib.drive_helpers import HYUNDAI_V_CRUISE_MIN
-from openpilot.selfdrive.controls.lib.events import CustomAlert, Events, ET
-
 
 VisualAlert = car.CarControl.HUDControl.VisualAlert
 LongCtrlState = car.CarControl.Actuators.LongControlState
-EventName = car.CarEvent.EventName
 
 # EPS faults if you apply torque while the steering angle is above 90 degrees for more than 1 second
 # All slightly below EPS thresholds to avoid fault
@@ -71,10 +68,7 @@ class CarController(CarControllerBase):
     self.target_accel = 0.0
     self.jerk_target = 0.0
     self.cruiseState_last = False
-    self.target_accel_limit = 0
-
-    self.events = Events()
-    self.alert_test = False
+    self.target_accel_limit = 0    
 
     sub_services = ['longitudinalPlanSP']
     if CP.openpilotLongitudinalControl:
@@ -115,7 +109,6 @@ class CarController(CarControllerBase):
     self.lead_distance = 0
     self.manual_parking_brake = self.param_s.get_bool("SubaruManualParkingBrakeSng")
     self.stock_long_toyota = self.param_s.get_bool("StockLongToyota")
-
 
   def calculate_lead_distance(self, hud_control: car.CarControl.HUDControl) -> float:
     lead_one = self.sm["radarState"].leadOne
@@ -297,11 +290,6 @@ class CarController(CarControllerBase):
       # Parse lead distance from radarState and display the corresponding distance in the car's cluster
       if self.CP.openpilotLongitudinalControl and self.sm.updated['radarState'] and self.frame % 5 == 0:
         self.lead_distance = self.calculate_lead_distance(hud_control)
-
-      #if self.frame > 500 and not self.alert_test:
-      #  custom_alert = CustomAlert("提示测试", "提示测试")
-      #  self.events.add(custom_alert)
-      #  self.alert_test = True
 
       if self.frame % 2 == 0 and self.CP.openpilotLongitudinalControl:
         if self.hkg_can_smooth_stop:
@@ -513,17 +501,17 @@ class CarController(CarControllerBase):
 
           if cruise_state_change:
             self.accel_ramp_time = 0.0  # 计时清0
-            self.target_accel_limit = 0.2 #初始最大加速度限制
+            self.target_accel_limit = 0.1 #初始最大加速度限制
             self.jerk_target = 0.1 #初始jerk目标
           
           if CS.out.cruiseState.enabled:
-            if self.accel_ramp_time < 3.0:
+            if self.accel_ramp_time < 5.0:
               self.accel_ramp_time += DT_CTRL
-              self.accel_ramp_time = min(self.accel_ramp_time, 3.0)  # 确保不会超过 3.0
-              self.target_accel_limit = interp(self.accel_ramp_time, [0, 3.0], [0.2, max(0.2, accel_limit)])
-              self.jerk_target = interp(self.accel_ramp_time, [0, 3.0], [0.1, max(0.1, jerk)])
+              self.accel_ramp_time = min(self.accel_ramp_time, 5.0)  # 确保不会超过 5.0
+              self.target_accel_limit = interp(self.accel_ramp_time, [0, 5.0], [0.0, max(0.1, accel_limit)])
+              self.jerk_target = interp(self.accel_ramp_time, [0, 5.0], [0.0, max(0.1, jerk)])
             else:
-              self.target_accel_limit = accel_limit  # 3秒后直接使用PID加速度
+              self.target_accel_limit = accel_limit  # 5秒后直接使用PID加速度
               self.jerk_target = jerk  # 3秒后直接使用jerk          
           else:
             self.target_accel_limit = accel_limit
