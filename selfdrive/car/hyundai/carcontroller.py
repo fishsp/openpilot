@@ -514,7 +514,7 @@ class CarController(CarControllerBase):
             self.target_accel_limit = 0.5 #初始最大加速度限制
             self.jerk_target = 0.1 #初始jerk目标
             #self.events.add(EventName.startupNoCar) #增加测试的用户提醒
-            hud_control.visualAlert = VisualAlert.steerRequired
+            #hud_control.visualAlert = VisualAlert.steerRequired
           
           if self.CP.pcmCruiseSpeed:
             if self.accel_ramp_time < 3.0:
