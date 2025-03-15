@@ -523,7 +523,7 @@ class CarController(CarControllerBase):
               self.target_accel_limit = interp(self.accel_ramp_time, [0, 3.0], [0.5, max(0.5, accel_limit)])
               self.jerk_target = interp(self.accel_ramp_time, [0, 3.0], [0.1, max(0.1, jerk)])
               #if self.accel_ramp_time >= 3.0:
-                hud_control.visualAlert = VisualAlert.none
+                #hud_control.visualAlert = VisualAlert.none
                 #self.events.add(EventName.startupNoCar) #增加测试的用户提醒
             else:
               self.target_accel_limit = accel_limit  # 3秒后直接使用PID加速度
