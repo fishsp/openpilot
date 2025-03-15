@@ -505,11 +505,11 @@ class CarController(CarControllerBase):
             self.jerk_target = 0.1 #初始jerk目标
           
           if CS.out.cruiseState.enabled:
-            if self.accel_ramp_time < 5.0:
+            if self.accel_ramp_time < 3.0:
               self.accel_ramp_time += DT_CTRL
-              self.accel_ramp_time = min(self.accel_ramp_time, 5.0)  # 确保不会超过 5.0
-              self.target_accel_limit = interp(self.accel_ramp_time, [0, 5.0], [0.0, max(0.1, accel_limit)])
-              self.jerk_target = interp(self.accel_ramp_time, [0, 5.0], [0.0, max(0.1, jerk)])
+              self.accel_ramp_time = min(self.accel_ramp_time, 3.0)  # 确保不会超过 5.0
+              self.target_accel_limit = interp(self.accel_ramp_time, [0, 3.0], [0.0, max(0.1, accel_limit)])
+              self.jerk_target = interp(self.accel_ramp_time, [0, 3.0], [0.0, max(0.1, jerk)])
             else:
               self.target_accel_limit = accel_limit  # 5秒后直接使用PID加速度
               self.jerk_target = jerk  # 3秒后直接使用jerk          
