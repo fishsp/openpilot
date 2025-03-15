@@ -70,7 +70,7 @@ class CarController(CarControllerBase):
     self.accel_ramp_time = 0.0
     self.target_accel = 0.0
     self.jerk_target = 0.0
-    self.pcmCruiseSpeed_last = False
+    self.cruiseState_last = False
     self.target_accel_limit = 0
 
     self.events = Events()
@@ -455,7 +455,7 @@ class CarController(CarControllerBase):
         }
 
         #未开启定速前 self.accel_ramp_time一直重置
-        if not self.CP.pcmCruiseSpeed:
+        if not CS.out.cruiseState.enabled:
           self.accel_ramp_time = 0.0
 
         # 如果是减速操作（accel 为负数）则不对 jerk和accel 进行任何限制
@@ -509,16 +509,16 @@ class CarController(CarControllerBase):
                 break
                 
           #是否由未设置速度变为设置定速状态
-          cruise_speed_just_set = not self.pcmCruiseSpeed_last and self.CP.pcmCruiseSpeed
+          cruise_state_change = not self.cruiseState_last and CS.out.cruiseState.enabled
 
-          if cruise_speed_just_set:
+          if cruise_state_change:
             self.accel_ramp_time = 0.0  # 计时清0
             self.target_accel_limit = 0.5 #初始最大加速度限制
             self.jerk_target = 0.1 #初始jerk目标
             #self.events.add(EventName.startupNoCar) #增加测试的用户提醒
             #hud_control.visualAlert = VisualAlert.steerRequired
           
-          if self.CP.pcmCruiseSpeed:
+          if CS.out.cruiseState.enabled:
             if self.accel_ramp_time < 3.0:
               self.accel_ramp_time += DT_CTRL
               self.accel_ramp_time = min(self.accel_ramp_time, 3.0)  # 确保不会超过 3.0
@@ -537,7 +537,7 @@ class CarController(CarControllerBase):
             
           jerk = self.jerk_target
           accel_limit = self.target_accel_limit
-          self.pcmCruiseSpeed_last = self.CP.pcmCruiseSpeed  # 记录状态                
+          self.cruiseState_last = CS.out.cruiseState.enabled  # 记录状态
                 
           # 使用 clip 限制加速度，确保加速度在指定范围内
           accel = clip(actuators.accel, CarControllerParams.ACCEL_MIN, accel_limit)
