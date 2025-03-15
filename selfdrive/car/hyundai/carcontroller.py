@@ -67,7 +67,7 @@ class CarController(CarControllerBase):
     self.accel_ramp_time = 0.0
     self.target_accel = 0.0
     self.jerk_target = 0.0
-    self.pcmCruiseSpeed_last = False
+    self.cruiseState_last = False
     self.target_accel_limit = 0    
 
     sub_services = ['longitudinalPlanSP']
@@ -443,11 +443,11 @@ class CarController(CarControllerBase):
         }
 
         #未开启定速前 self.accel_ramp_time一直重置
-        if not self.CP.pcmCruiseSpeed:
+        if not CS.out.cruiseState.enabled:
           self.accel_ramp_time = 0.0
 
         # 如果是减速操作（accel 为负数）则不对 jerk和accel 进行任何限制
-        if (actuators.accel < 0):
+        if actuators.accel < 0:
           if actuators.longControlState == LongCtrlState.pid:
             min_accel = max(actuators.accel, CarControllerParams.ACCEL_MIN)
             jerk = interp(min_accel, [0, CarControllerParams.ACCEL_MIN], [1.0, 3.0])
@@ -480,6 +480,8 @@ class CarController(CarControllerBase):
               speed_limits = non_pid_speed4_limits  # 使用非 PID 状态下的限制表
           
           # 判断车速所在区间并根据车速设置 jerk 和 accel
+          accel_limit = CarControllerParams.ACCEL_MAX
+          jerk = 1.0
           if speed <= 0 :  # 车速小于 0 km/h
             jerk = speed_limits[0]["jerk"]  # 最大 jerk
             accel_limit = speed_limits[0]["accel"]  # 最大加速度
@@ -495,19 +497,19 @@ class CarController(CarControllerBase):
                 break
                 
           #是否由未设置速度变为设置定速状态
-          cruise_speed_just_set = not self.pcmCruiseSpeed_last and self.CP.pcmCruiseSpeed
+          cruise_state_change = not self.cruiseState_last and CS.out.cruiseState.enabled
 
-          if cruise_speed_just_set:
+          if cruise_state_change:
             self.accel_ramp_time = 0.0  # 计时清0
-            self.target_accel_limit = 0.5 #初始最大加速度限制
+            self.target_accel_limit = 0.1 #初始最大加速度限制
             self.jerk_target = 0.1 #初始jerk目标
           
-          if self.CP.pcmCruiseSpeed:
+          if CS.out.cruiseState.enabled:
             if self.accel_ramp_time < 3.0:
               self.accel_ramp_time += DT_CTRL
               self.accel_ramp_time = min(self.accel_ramp_time, 3.0)  # 确保不会超过 3.0
-              self.target_accel_limit = interp(self.accel_ramp_time, [0, 3.0], [0.5, max(0.5, accel_limit)])
-              self.jerk_target = interp(self.accel_ramp_time, [0, 3.0], [0.1, max(0.1, jerk)])
+              self.target_accel_limit = interp(self.accel_ramp_time, [0, 3.0], [0.0, max(0.1, accel_limit)])
+              self.jerk_target = interp(self.accel_ramp_time, [0, 3.0], [0.0, max(0.1, jerk)])
             else:
               self.target_accel_limit = accel_limit  # 3秒后直接使用PID加速度
               self.jerk_target = jerk  # 3秒后直接使用jerk          
@@ -518,7 +520,7 @@ class CarController(CarControllerBase):
             
           jerk = self.jerk_target
           accel_limit = self.target_accel_limit
-          self.pcmCruiseSpeed_last = self.CP.pcmCruiseSpeed  # 记录状态                
+          self.cruiseState_last = CS.out.cruiseState.enabled  # 记录状态
                 
           # 使用 clip 限制加速度，确保加速度在指定范围内
           accel = clip(actuators.accel, CarControllerParams.ACCEL_MIN, accel_limit)
