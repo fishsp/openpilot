@@ -114,6 +114,8 @@ class CarController(CarControllerBase):
     self.lead_distance = 0
     self.manual_parking_brake = self.param_s.get_bool("SubaruManualParkingBrakeSng")
     self.stock_long_toyota = self.param_s.get_bool("StockLongToyota")
+    print("DEBUG: CarController init done")
+
 
   def calculate_lead_distance(self, hud_control: car.CarControl.HUDControl) -> float:
     lead_one = self.sm["radarState"].leadOne
