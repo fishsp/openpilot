@@ -201,7 +201,7 @@ class CustomAlert(Alert):
   def __init__(self, alert_text_1: str, alert_text_2: str = "用户自定义提示", alert_status=AlertStatus.normal):
     super().__init__(alert_text_1, alert_text_2,
                      alert_status, AlertSize.mid,
-                     Priority.LOWER, VisualAlert.none, AudibleAlert.none, 1.),
+                     Priority.LOWER, VisualAlert.none, AudibleAlert.none, .1),
 
 
 # ********** helper functions **********
@@ -396,7 +396,12 @@ EVENTS: dict[int, dict[str, Alert | AlertCallbackType]] = {
 
   # Car is not recognized
   EventName.startupNoCar: {
-    ET.PERMANENT: StartupAlert("您的车暂不支持"),
+    ET.PERMANENT: Alert(
+      "巡航开启中...",
+      "",
+      AlertStatus.normal, AlertSize.small,
+      Priority.LOW, VisualAlert.none, AudibleAlert.none, .1),
+    #ET.PERMANENT: StartupAlert("您的车暂不支持"),
   },
 
   EventName.startupNoFw: {
