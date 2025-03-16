@@ -154,7 +154,7 @@ class VCruiseHelper:
     button_type = None
 
     v_cruise_delta = 1. if is_metric else IMPERIAL_INCREMENT
-    v_cruise_delta_mltplr = 10 if is_metric else 5
+    v_cruise_delta_mltplr = 5 
 
     for b in CS.buttonEvents:
       if b.type.raw in self.button_timers and not b.pressed:
