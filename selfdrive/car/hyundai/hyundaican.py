@@ -203,6 +203,79 @@ def create_acc_commands(packer, enabled, accel, upper_jerk, idx, hud_control, se
 
   return commands
 
+def create_new_acc_commands(packer, enabled, accel_raw, accel_val, lower_jerk, upper_jerk, idx, hud_control, set_speed, stopping, long_override, use_fca,
+                        CS, escc, CP, lead_distance, cb_lower, cb_upper):
+  commands = []
+
+  scc11_values = {
+    "MainMode_ACC": 1 if CS.mainEnabled else 0,
+    "TauGapSet": hud_control.leadDistanceBars,
+    "VSetDis": set_speed if enabled else 0,
+    "AliveCounterACC": idx % 0x10,
+    "ObjValid": 1, # close lead makes controls tighter
+    "ACC_ObjStatus": 1, # close lead makes controls tighter
+    "ACC_ObjLatPos": 0,
+    "ACC_ObjRelSpd": 0,
+    "ACC_ObjDist": 1, # close lead makes controls tighter
+    }
+  commands.append(packer.make_can_msg("SCC11", 0, scc11_values))
+
+  scc12_values = {
+    "ACCMode": 2 if enabled and long_override else 1 if enabled else 0,
+    "StopReq": 1 if stopping else 0,
+    "aReqRaw": accel_raw,
+    "aReqValue": accel_val,  # stock ramps up and down respecting jerk limit until it reaches aReqRaw
+    "CR_VSM_Alive": idx % 0xF,
+  }
+
+  # show AEB disabled indicator on dash with SCC12 if not sending FCA messages.
+  # these signals also prevent a TCS fault on non-FCA cars with alpha longitudinal
+  if not use_fca:
+    scc12_values["CF_VSM_ConfMode"] = 1
+    scc12_values["AEB_Status"] = 2 if escc else 1  # AEB disabled
+    if escc:
+      scc12_values["AEB_CmdAct"] = CS.escc_cmd_act
+      scc12_values["CF_VSM_Warn"] = CS.escc_aeb_warning
+      scc12_values["CF_VSM_DecCmdAct"] = CS.escc_aeb_dec_cmd_act
+      scc12_values["CR_VSM_DecCmd"] = CS.escc_aeb_dec_cmd
+
+  scc12_dat = packer.make_can_msg("SCC12", 0, scc12_values)[1]
+  scc12_values["CR_VSM_ChkSum"] = 0x10 - sum(sum(divmod(i, 16)) for i in scc12_dat) % 0x10
+
+  commands.append(packer.make_can_msg("SCC12", 0, scc12_values))
+
+  scc14_values = {
+    "ComfortBandUpper": cb_upper, # stock usually is 0 but sometimes uses higher values
+    "ComfortBandLower": cb_lower, # stock usually is 0 but sometimes uses higher values
+    "JerkUpperLimit": upper_jerk, # stock usually is 1.0 but sometimes uses higher values
+    "JerkLowerLimit": lower_jerk, # stock usually is 0.5 but sometimes uses higher values
+    "ACCMode": 2 if enabled and long_override else 1 if enabled else 4, # stock will always be 4 instead of 0 after first disengage
+    "ObjGap": get_object_gap(lead_distance), # 5: >30, m, 4: 25-30 m, 3: 20-25 m, 2: < 20 m, 0: no lead
+  }
+  commands.append(packer.make_can_msg("SCC14", 0, scc14_values))
+
+  # Only send FCA11 on cars where it exists on the bus
+  if use_fca and not escc:
+    if CP.flags & HyundaiFlags.CAMERA_SCC:
+      fca11_values = CS.fca11
+      fca11_values["PAINT1_Status"] = 1
+      fca11_values["FCA_DrvSetStatus"] = 1
+      fca11_values["FCA_Status"] = 1  # AEB disabled, until a route with AEB or FCW trigger is verified
+    else:
+      # note that some vehicles most likely have an alternate checksum/counter definition
+      # https://github.com/commaai/opendbc/commit/9ddcdb22c4929baf310295e832668e6e7fcfa602
+      fca11_values = {
+        "CR_FCA_Alive": idx % 0xF,
+        "PAINT1_Status": 1,
+        "FCA_DrvSetStatus": 1,
+        "FCA_Status": 1,  # AEB disabled
+      }
+    fca11_dat = packer.make_can_msg("FCA11", 0, fca11_values)[1]
+    fca11_values["CR_FCA_ChkSum"] = hyundai_checksum(fca11_dat[:7])
+    commands.append(packer.make_can_msg("FCA11", 0, fca11_values))
+
+  return commands
+
 def create_acc_opt(packer, escc, CS, CP):
   commands = []
 
