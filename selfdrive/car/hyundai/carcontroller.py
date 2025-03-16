@@ -66,9 +66,9 @@ class CarController(CarControllerBase):
 
     self.accel_ramp_time = 0.0
     self.target_accel = 0.0
-    self.jerk_target = 0.0
+    self.jerk_limit = 0.0
     self.cruiseState_last = False
-    self.target_accel_limit = 0    
+    self.accel_limit = 0
 
     sub_services = ['longitudinalPlanSP']
     if CP.openpilotLongitudinalControl:
@@ -109,6 +109,19 @@ class CarController(CarControllerBase):
     self.lead_distance = 0
     self.manual_parking_brake = self.param_s.get_bool("SubaruManualParkingBrakeSng")
     self.stock_long_toyota = self.param_s.get_bool("StockLongToyota")
+
+    self.jerk = 0.0
+    self.jerk_l = 0.0
+    self.jerk_u = 0.0
+    self.jerkStartLimit = 2.0
+    self.cb_upper = 0.0
+    self.cb_lower = 0.0
+    self.jerk_count = 0.0
+
+    self.accel_raw = 0
+    self.accel_val = 0
+    self.accel_last_jerk = 0
+    self.hkg_custom_long_tuning = self.param_s.get_bool("HkgSmoothStop")
 
   def calculate_lead_distance(self, hud_control: car.CarControl.HUDControl) -> float:
     lead_one = self.sm["radarState"].leadOne
@@ -219,6 +232,117 @@ class CarController(CarControllerBase):
       # for blinkers
       if self.CP.flags & HyundaiFlags.ENABLE_BLINKERS:
         can_sends.append([0x7b1, 0, b"\x02\x3E\x80\x00\x00\x00\x00\x00", self.CAN.ECAN])
+            
+    if self.CP.openpilotLongitudinalControl:
+      speed = CS.out.vEgoRaw  # 当前车速（m/s）
+      # 定义车速区间对应的 jerk 和 accel 限制值
+      pid_speed_limits = {
+        0: {"jerk": 0.2, "accel": 0.5},  # 0 km/h
+        0.56: {"jerk": 0.2, "accel": 0.7},  # 2 km/h
+        1.11: {"jerk": 0.3, "accel": 0.9},  # 4 km/h
+        1.67: {"jerk": 0.3, "accel": 0.9},  # 6 km/h
+        2.22: {"jerk": 0.4, "accel": 1.0},  # 8 km/h
+        2.78: {"jerk": 0.4, "accel": 1.0},  # 10 km/h
+        4.17: {"jerk": 0.4, "accel": 1.0},  # 15 km/h
+        5.56: {"jerk": 0.4, "accel": 1.0},  # 20 km/h
+        6.94: {"jerk": 0.4, "accel": 1.0},  # 25 km/h
+        8.33: {"jerk": 0.4, "accel": 1.0},  # 30 km/h
+        10.0: {"jerk": 0.4, "accel": 1.0},  # 35 km/h
+        11.11: {"jerk": 0.4, "accel": 1.0},  # 40 km/h
+        12.22: {"jerk": 0.4, "accel": 1.0},  # 45 km/h
+        13.33: {"jerk": 0.3, "accel": 0.9},  # 50 km/h
+        14.44: {"jerk": 0.3, "accel": 0.9},  # 55 km/h
+        15.55: {"jerk": 0.3, "accel": 0.8},  # 60 km/h
+        16.67: {"jerk": 0.3, "accel": 0.7},  # 65 km/h
+        17.78: {"jerk": 0.2, "accel": 0.6},  # 70 km/h
+        18.89: {"jerk": 0.2, "accel": 0.6},  # 75 km/h
+        22.22: {"jerk": 0.2, "accel": 0.5},  # 80 km/h
+      }
+      non_pid_speed_limits = {
+        0: {"jerk": 0.2, "accel": 0.5},  # 0 km/h
+        0.56: {"jerk": 0.2, "accel": 0.7},  # 2 km/h
+        1.11: {"jerk": 0.3, "accel": 0.9},  # 4 km/h
+        1.67: {"jerk": 0.3, "accel": 0.9},  # 6 km/h
+        2.22: {"jerk": 0.4, "accel": 1.0},  # 8 km/h
+        2.78: {"jerk": 0.4, "accel": 1.0},  # 10 km/h
+        4.17: {"jerk": 0.4, "accel": 1.0},  # 15 km/h
+        5.56: {"jerk": 0.4, "accel": 1.0},  # 20 km/h
+        6.94: {"jerk": 0.4, "accel": 1.0},  # 25 km/h
+        8.33: {"jerk": 0.4, "accel": 1.0},  # 30 km/h
+        10.0: {"jerk": 0.4, "accel": 1.0},  # 35 km/h
+        11.11: {"jerk": 0.4, "accel": 1.0},  # 40 km/h
+        12.22: {"jerk": 0.4, "accel": 1.0},  # 45 km/h
+        13.33: {"jerk": 0.3, "accel": 0.9},  # 50 km/h
+        14.44: {"jerk": 0.3, "accel": 0.9},  # 55 km/h
+        15.55: {"jerk": 0.3, "accel": 0.8},  # 60 km/h
+        16.67: {"jerk": 0.3, "accel": 0.7},  # 65 km/h
+        17.78: {"jerk": 0.2, "accel": 0.6},  # 70 km/h
+        18.89: {"jerk": 0.2, "accel": 0.6},  # 75 km/h
+        22.22: {"jerk": 0.2, "accel": 0.5},  # 80 km/h
+      }
+
+      # 根据 longControlState 判断适用的车速区间（PID 或非 PID）
+      if actuators.longControlState == LongCtrlState.pid:
+        speed_limits = pid_speed_limits  # 使用 PID 状态下的限制表
+      else:
+        speed_limits = non_pid_speed_limits  # 使用非 PID 状态下的限制表
+
+      # 根据车速jerk和accel
+      accel_limit = CarControllerParams.ACCEL_MAX
+      jerk_limit = 3.0
+
+      # 非巡航状态则重置self.accel_ramp_time
+      if not CS.out.cruiseState.enabled:
+        self.accel_ramp_time = 0.0
+
+      if actuators.accel >= -0.1: #控制加速度大于-0.1时
+        if self.manual_parking_brake:  # 开启斯巴鲁驻车选项后才启用加速度表
+          if speed <= 0:  # 车速小于 0 km/h
+            jerk_limit = speed_limits[0]["jerk"]  # 最大 jerk
+            accel_limit = speed_limits[0]["accel"]  # 最大加速度
+          elif speed >= 22.22:  # 车速大于 80 km/h (22.22 m/s)
+            jerk_limit = speed_limits[22.22]["jerk"]  # 最小 jerk
+            accel_limit = speed_limits[22.22]["accel"]  # 最小加速度
+          else:
+            # 查找对应车速区间的 jerk 和 accel 限制值
+            for speed_limit, limits in reversed(sorted(speed_limits.items())):
+              if speed >= speed_limit:
+                jerk_limit = limits["jerk"]
+                accel_limit = limits["accel"]
+                break
+
+        # 由非巡航状态变为设置巡航状态
+        cruise_state_change = not self.cruiseState_last and CS.out.cruiseState.enabled
+        if cruise_state_change:
+          self.accel_ramp_time = 0.0  # 计时清0
+          self.accel_limit = 0.3  # 初始最大加速度限制
+          self.jerk_limit = 0.2  # 初始jerk目标
+
+        if CS.out.cruiseState.enabled and self.stock_long_toyota:  # 打开了丰田纵向开关才允许平滑
+          accel_ramp_time_max = 3.0
+          if self.accel_ramp_time < accel_ramp_time_max:
+            self.accel_ramp_time += DT_CTRL
+            self.accel_ramp_time = min(self.accel_ramp_time, accel_ramp_time_max)  # 确保不会超过 3.0
+            self.accel_limit = interp(self.accel_ramp_time, [0, accel_ramp_time_max], [0.3, max(0.3, accel_limit)])
+            self.jerk_limit = interp(self.accel_ramp_time, [0, accel_ramp_time_max], [0.2, max(0.2, jerk_limit)])
+          else:
+            self.accel_limit = accel_limit  # 3秒后直接使用PID加速度
+            self.jerk_limit = jerk_limit  # 3秒后直接使用jerk
+        else:
+          self.accel_limit = accel_limit
+          self.jerk_limit = jerk_limit
+          self.accel_ramp_time = 0  # 复位
+
+        self.cruiseState_last = CS.out.cruiseState.enabled  # 记录状态
+
+        # 使用 clip 限制加速度，确保加速度在指定范围内(开启斯巴鲁驻车选项后)
+        if self.manual_parking_brake or self.stock_long_toyota:
+          accel = clip(actuators.accel, CarControllerParams.ACCEL_MIN, self.accel_limit)
+      else:
+        self.accel_limit = accel_limit
+        self.jerk_limit = jerk_limit
+
+      self.make_jerk(CS, accel, actuators)
 
     # CAN-FD platforms
     if self.CP.carFingerprint in CANFD_CAR:
@@ -247,7 +371,7 @@ class CarController(CarControllerBase):
         if hda2:
           can_sends.extend(hyundaicanfd.create_adrv_messages(self.packer, self.CAN, self.frame))
         if self.frame % 2 == 0:
-          can_sends.append(hyundaicanfd.create_acc_control(self.packer, self.CAN, CC.enabled and CS.out.cruiseState.enabled, self.accel_last, accel, stopping, CC.cruiseControl.override,
+          can_sends.append(hyundaicanfd.create_new_acc_control(self.packer, self.CAN, CC.enabled and CS.out.cruiseState.enabled, self.accel_last, accel, stopping, CC.cruiseControl.override,
                                                            set_speed_in_units, hud_control))
           self.accel_last = accel
       else:
@@ -292,243 +416,20 @@ class CarController(CarControllerBase):
         self.lead_distance = self.calculate_lead_distance(hud_control)
 
       if self.frame % 2 == 0 and self.CP.openpilotLongitudinalControl:
-        if self.hkg_can_smooth_stop:
-          stopping = stopping and CS.out.vEgoRaw < 0.05
-          
-        # 动态限制 jerk 和 accel
-        speed = CS.out.vEgoRaw  # 当前车速（m/s）
-        
-        # 定义车速区间对应的 jerk 和 accel 限制值
-        # PID 状态
-        pid_speed_limits = {
-          0: {"jerk": 0.2, "accel": 0.6},  # 0 km/h
-          0.56: {"jerk": 0.3, "accel": 0.9},  # 2 km/h
-          1.11: {"jerk": 0.5, "accel": 1.4},  # 4 km/h
-          1.67: {"jerk": 0.8, "accel": 1.6},  # 6 km/h
-          2.22: {"jerk": 1.2, "accel": 1.8},  # 8 km/h
-          2.78: {"jerk": 1.6, "accel": 2.0},  # 10 km/h
-          4.17: {"jerk": 1.8, "accel": 2.0},  # 15 km/h
-          5.56: {"jerk": 2.0, "accel": 2.0},  # 20 km/h
-          6.94: {"jerk": 2.0, "accel": 2.0},  # 25 km/h
-          8.33: {"jerk": 2.0, "accel": 2.0},  # 30 km/h
-          10.0: {"jerk": 2.0, "accel": 1.8},  # 35 km/h
-          11.11: {"jerk": 1.5, "accel": 1.6},  # 40 km/h
-          12.22: {"jerk": 1.0, "accel": 1.4},  # 45 km/h
-          13.33: {"jerk": 0.6, "accel": 1.2},  # 50 km/h
-          14.44: {"jerk": 0.4, "accel": 1.0},  # 55 km/h
-          15.55: {"jerk": 0.3, "accel": 0.8},  # 60 km/h
-          16.67: {"jerk": 0.3, "accel": 0.7},  # 65 km/h
-          17.78: {"jerk": 0.2, "accel": 0.6},  # 70 km/h
-          18.89: {"jerk": 0.2, "accel": 0.5},  # 75 km/h
-          22.22: {"jerk": 0.2, "accel": 0.5},  # 80 km/h
-        }
-        # 非 PID 状态
-        non_pid_speed_limits = {
-          0: {"jerk": 0.2, "accel": 0.6},  # 0 km/h
-          0.56: {"jerk": 0.3, "accel": 0.9},  # 2 km/h
-          1.11: {"jerk": 0.5, "accel": 1.4},  # 4 km/h
-          1.67: {"jerk": 0.8, "accel": 1.6},  # 6 km/h
-          2.22: {"jerk": 1.0, "accel": 1.8},  # 8 km/h
-          2.78: {"jerk": 1.0, "accel": 2.0},  # 10 km/h
-          4.17: {"jerk": 1.0, "accel": 2.0},  # 15 km/h
-          5.56: {"jerk": 1.0, "accel": 2.0},  # 20 km/h
-          6.94: {"jerk": 1.0, "accel": 2.0},  # 25 km/h
-          8.33: {"jerk": 1.0, "accel": 2.0},  # 30 km/h
-          10.0: {"jerk": 0.9, "accel": 1.8},  # 35 km/h
-          11.11: {"jerk": 0.8, "accel": 1.6},  # 40 km/h
-          12.22: {"jerk": 0.7, "accel": 1.4},  # 45 km/h
-          13.33: {"jerk": 0.6, "accel": 1.2},  # 50 km/h
-          14.44: {"jerk": 0.5, "accel": 1.0},  # 55 km/h
-          15.55: {"jerk": 0.4, "accel": 0.8},  # 60 km/h
-          16.67: {"jerk": 0.3, "accel": 0.7},  # 65 km/h
-          17.78: {"jerk": 0.2, "accel": 0.6},  # 70 km/h
-          18.89: {"jerk": 0.1, "accel": 0.5},  # 75 km/h
-          22.22: {"jerk": 0.1, "accel": 0.5},  # 80 km/h
-        }
-        pid_speed2_limits = {
-          0: {"jerk": 0.2, "accel": 0.5},  # 0 km/h
-          0.56: {"jerk": 0.2, "accel": 0.7},  # 2 km/h
-          1.11: {"jerk": 0.3, "accel": 0.9},  # 4 km/h
-          1.67: {"jerk": 0.4, "accel": 1.0},  # 6 km/h
-          2.22: {"jerk": 0.4, "accel": 1.1},  # 8 km/h
-          2.78: {"jerk": 0.5, "accel": 1.2},  # 10 km/h
-          4.17: {"jerk": 0.6, "accel": 1.2},  # 15 km/h
-          5.56: {"jerk": 0.6, "accel": 1.2},  # 20 km/h
-          6.94: {"jerk": 0.6, "accel": 1.2},  # 25 km/h
-          8.33: {"jerk": 0.6, "accel": 1.2},  # 30 km/h
-          10.0: {"jerk": 0.5, "accel": 1.2},  # 35 km/h
-          11.11: {"jerk": 0.4, "accel": 1.2},  # 40 km/h
-          12.22: {"jerk": 0.4, "accel": 1.2},  # 45 km/h
-          13.33: {"jerk": 0.3, "accel": 1.1},  # 50 km/h
-          14.44: {"jerk": 0.3, "accel": 1.0},  # 55 km/h
-          15.55: {"jerk": 0.3, "accel": 0.9},  # 60 km/h
-          16.67: {"jerk": 0.3, "accel": 0.8},  # 65 km/h
-          17.78: {"jerk": 0.2, "accel": 0.7},  # 70 km/h
-          18.89: {"jerk": 0.2, "accel": 0.6},  # 75 km/h
-          22.22: {"jerk": 0.2, "accel": 0.5},  # 80 km/h
-        }
-        non_pid_speed2_limits = {
-          0: {"jerk": 0.2, "accel": 0.5},  # 0 km/h
-          0.56: {"jerk": 0.2, "accel": 0.7},  # 2 km/h
-          1.11: {"jerk": 0.3, "accel": 0.9},  # 4 km/h
-          1.67: {"jerk": 0.4, "accel": 1.0},  # 6 km/h
-          2.22: {"jerk": 0.4, "accel": 1.1},  # 8 km/h
-          2.78: {"jerk": 0.5, "accel": 1.2},  # 10 km/h
-          4.17: {"jerk": 0.6, "accel": 1.2},  # 15 km/h
-          5.56: {"jerk": 0.6, "accel": 1.2},  # 20 km/h
-          6.94: {"jerk": 0.6, "accel": 1.2},  # 25 km/h
-          8.33: {"jerk": 0.6, "accel": 1.2},  # 30 km/h
-          10.0: {"jerk": 0.5, "accel": 1.2},  # 35 km/h
-          11.11: {"jerk": 0.4, "accel": 1.2},  # 40 km/h
-          12.22: {"jerk": 0.4, "accel": 1.2},  # 45 km/h
-          13.33: {"jerk": 0.3, "accel": 1.1},  # 50 km/h
-          14.44: {"jerk": 0.3, "accel": 1.0},  # 55 km/h
-          15.55: {"jerk": 0.3, "accel": 0.9},  # 60 km/h
-          16.67: {"jerk": 0.3, "accel": 0.8},  # 65 km/h
-          17.78: {"jerk": 0.2, "accel": 0.7},  # 70 km/h
-          18.89: {"jerk": 0.2, "accel": 0.6},  # 75 km/h
-          22.22: {"jerk": 0.2, "accel": 0.5},  # 80 km/h
-        }
-        pid_speed3_limits = {
-          0: {"jerk": 0.2, "accel": 0.5},  # 0 km/h
-          0.56: {"jerk": 0.2, "accel": 0.7},  # 2 km/h
-          1.11: {"jerk": 0.3, "accel": 0.9},  # 4 km/h
-          1.67: {"jerk": 0.3, "accel": 0.9},  # 6 km/h
-          2.22: {"jerk": 0.4, "accel": 1.0},  # 8 km/h
-          2.78: {"jerk": 0.4, "accel": 1.0},  # 10 km/h
-          4.17: {"jerk": 0.4, "accel": 1.0},  # 15 km/h
-          5.56: {"jerk": 0.4, "accel": 1.0},  # 20 km/h
-          6.94: {"jerk": 0.4, "accel": 1.0},  # 25 km/h
-          8.33: {"jerk": 0.4, "accel": 1.0},  # 30 km/h
-          10.0: {"jerk": 0.4, "accel": 1.0},  # 35 km/h
-          11.11: {"jerk": 0.4, "accel": 1.0},  # 40 km/h
-          12.22: {"jerk": 0.4, "accel": 1.0},  # 45 km/h
-          13.33: {"jerk": 0.3, "accel": 0.9},  # 50 km/h
-          14.44: {"jerk": 0.3, "accel": 0.9},  # 55 km/h
-          15.55: {"jerk": 0.3, "accel": 0.8},  # 60 km/h
-          16.67: {"jerk": 0.3, "accel": 0.7},  # 65 km/h
-          17.78: {"jerk": 0.2, "accel": 0.6},  # 70 km/h
-          18.89: {"jerk": 0.2, "accel": 0.6},  # 75 km/h
-          22.22: {"jerk": 0.2, "accel": 0.5},  # 80 km/h
-        }
-        non_pid_speed3_limits = {
-          0: {"jerk": 0.2, "accel": 0.5},  # 0 km/h
-          0.56: {"jerk": 0.2, "accel": 0.7},  # 2 km/h
-          1.11: {"jerk": 0.3, "accel": 0.9},  # 4 km/h
-          1.67: {"jerk": 0.3, "accel": 0.9},  # 6 km/h
-          2.22: {"jerk": 0.4, "accel": 1.0},  # 8 km/h
-          2.78: {"jerk": 0.4, "accel": 1.0},  # 10 km/h
-          4.17: {"jerk": 0.4, "accel": 1.0},  # 15 km/h
-          5.56: {"jerk": 0.4, "accel": 1.0},  # 20 km/h
-          6.94: {"jerk": 0.4, "accel": 1.0},  # 25 km/h
-          8.33: {"jerk": 0.4, "accel": 1.0},  # 30 km/h
-          10.0: {"jerk": 0.4, "accel": 1.0},  # 35 km/h
-          11.11: {"jerk": 0.4, "accel": 1.0},  # 40 km/h
-          12.22: {"jerk": 0.4, "accel": 1.0},  # 45 km/h
-          13.33: {"jerk": 0.3, "accel": 0.9},  # 50 km/h
-          14.44: {"jerk": 0.3, "accel": 0.9},  # 55 km/h
-          15.55: {"jerk": 0.3, "accel": 0.8},  # 60 km/h
-          16.67: {"jerk": 0.3, "accel": 0.7},  # 65 km/h
-          17.78: {"jerk": 0.2, "accel": 0.6},  # 70 km/h
-          18.89: {"jerk": 0.2, "accel": 0.6},  # 75 km/h
-          22.22: {"jerk": 0.2, "accel": 0.5},  # 80 km/h
-        }	      
-        pid_speed4_limits = {
-          0: {"jerk": 3.0, "accel": 2.0},  # 0 km/h
-          22.22: {"jerk": 3.0, "accel": 2.0},
-        }
-        non_pid_speed4_limits = {
-          0: {"jerk": 1.0, "accel": 2.0},  # 0 km/h
-          22.22: {"jerk": 1.0, "accel": 2.0},
-        }
-
-        #未开启定速前 self.accel_ramp_time一直重置
-        if not CS.out.cruiseState.enabled:
-          self.accel_ramp_time = 0.0
-
-        # 如果是减速操作（accel 为负数）则不对 jerk和accel 进行任何限制
-        if actuators.accel < 0:
-          if actuators.longControlState == LongCtrlState.pid:
-            min_accel = max(actuators.accel, CarControllerParams.ACCEL_MIN)
-            jerk = interp(min_accel, [0, CarControllerParams.ACCEL_MIN], [1.0, 3.0])
-          else:
-            jerk = 1.0
-        else:
-          if (not self.manual_parking_brake) and (not self.stock_long_toyota):
-            # 根据 longControlState 判断适用的车速区间（PID 或非 PID）
-            if actuators.longControlState == LongCtrlState.pid:
-              speed_limits = pid_speed_limits  # 使用 PID 状态下的限制表
-            else:
-              speed_limits = non_pid_speed_limits  # 使用非 PID 状态下的限制表
-          elif (not self.manual_parking_brake) and self.stock_long_toyota:
-            # 根据 longControlState 判断适用的车速区间（PID 或非 PID）
-            if actuators.longControlState == LongCtrlState.pid:
-              speed_limits = pid_speed2_limits  # 使用 PID 状态下的限制表
-            else:
-              speed_limits = non_pid_speed2_limits  # 使用非 PID 状态下的限制表
-          elif self.manual_parking_brake and (not self.stock_long_toyota):
-            # 根据 longControlState 判断适用的车速区间（PID 或非 PID）
-            if actuators.longControlState == LongCtrlState.pid:
-              speed_limits = pid_speed3_limits  # 使用 PID 状态下的限制表
-            else:
-              speed_limits = non_pid_speed3_limits  # 使用非 PID 状态下的限制表
-          else:
-            # 根据 longControlState 判断适用的车速区间（PID 或非 PID）
-            if actuators.longControlState == LongCtrlState.pid:
-              speed_limits = pid_speed4_limits  # 使用 PID 状态下的限制表
-            else:
-              speed_limits = non_pid_speed4_limits  # 使用非 PID 状态下的限制表
-          
-          # 判断车速所在区间并根据车速设置 jerk 和 accel
-          accel_limit = CarControllerParams.ACCEL_MAX
-          jerk = 1.0
-          if speed <= 0 :  # 车速小于 0 km/h
-            jerk = speed_limits[0]["jerk"]  # 最大 jerk
-            accel_limit = speed_limits[0]["accel"]  # 最大加速度
-          elif speed >= 22.22:  # 车速大于 80 km/h (22.22 m/s)
-            jerk = speed_limits[22.22]["jerk"]  # 最小 jerk
-            accel_limit = speed_limits[22.22]["accel"]  # 最小加速度
-          else:
-            # 查找对应车速区间的 jerk 和 accel 限制值
-            for speed_limit, limits in reversed(sorted(speed_limits.items())):
-              if speed >= speed_limit:
-                jerk = limits["jerk"]
-                accel_limit = limits["accel"]
-                break
-                
-          #是否由未设置速度变为设置定速状态
-          cruise_state_change = not self.cruiseState_last and CS.out.cruiseState.enabled
-
-          if cruise_state_change:
-            self.accel_ramp_time = 0.0  # 计时清0
-            self.target_accel_limit = 0.1 #初始最大加速度限制
-            self.jerk_target = 0.1 #初始jerk目标
-          
-          if CS.out.cruiseState.enabled:
-            if self.accel_ramp_time < 3.0:
-              self.accel_ramp_time += DT_CTRL
-              self.accel_ramp_time = min(self.accel_ramp_time, 3.0)  # 确保不会超过 3.0
-              self.target_accel_limit = interp(self.accel_ramp_time, [0, 3.0], [0.0, max(0.1, accel_limit)])
-              self.jerk_target = interp(self.accel_ramp_time, [0, 3.0], [0.0, max(0.1, jerk)])
-            else:
-              self.target_accel_limit = accel_limit  # 3秒后直接使用PID加速度
-              self.jerk_target = jerk  # 3秒后直接使用jerk          
-          else:
-            self.target_accel_limit = accel_limit
-            self.jerk_target = jerk
-            self.accel_ramp_time = 0  # 复位
-            
-          jerk = self.jerk_target
-          accel_limit = self.target_accel_limit
-          self.cruiseState_last = CS.out.cruiseState.enabled  # 记录状态
-                
-          # 使用 clip 限制加速度，确保加速度在指定范围内
-          accel = clip(actuators.accel, CarControllerParams.ACCEL_MIN, accel_limit)
-          
+        # TODO: unclear if this is needed
+        jerk = 3.0 if actuators.longControlState == LongCtrlState.pid else 1.0
         use_fca = self.CP.flags & HyundaiFlags.USE_FCA.value
-        can_sends.extend(hyundaican.create_acc_commands(self.packer, CC.enabled and CS.out.cruiseState.enabled, accel, jerk, int(self.frame / 2),
-                                                        hud_control, set_speed_in_units, stopping,
-                                                        CC.cruiseControl.override, use_fca, CS, escc, self.CP, self.lead_distance))
+        self.make_accel(CS, actuators)
+
+        if self.manual_parking_brake  or self.stock_long_toyota: #开启斯巴鲁驻车选项后
+          jerk = min(self.jerk_u, self.jerk_limit) #确保self.jerk_u不会超过self.jerk_limit
+          can_sends.extend(hyundaican.create_new_acc_commands(self.packer, CC.enabled and CS.out.cruiseState.enabled, self.accel_raw, self.accel_val, self.jerk_l, jerk, int(self.frame / 2),
+                                                              hud_control, set_speed_in_units, stopping,
+                                                              CC.cruiseControl.override, use_fca, CS, escc, self.CP, self.lead_distance, self.cb_lower, self.cb_upper))
+        else:
+          can_sends.extend(hyundaican.create_new_acc_commands(self.packer, CC.enabled and CS.out.cruiseState.enabled, self.accel_raw, self.accel_val, self.jerk_l, self.jerk_u, int(self.frame / 2),
+                                                              hud_control, set_speed_in_units, stopping,
+                                                              CC.cruiseControl.override, use_fca, CS, escc, self.CP, self.lead_distance, self.cb_lower, self.cb_upper))
 
       # 20 Hz LFA MFA message
       if self.frame % 5 == 0 and self.CP.flags & HyundaiFlags.SEND_LFA.value:
@@ -702,3 +603,47 @@ class CarController(CarControllerBase):
 
       cruise_button = self.get_button_control(CS, self.final_speed_kph, v_cruise_kph_prev)  # MPH/KPH based button presses
     return cruise_button
+
+  # jerk calculations thanks to apilot!
+  def cal_jerk(self, accel, actuators):
+    self.accel_raw = accel
+    if actuators.longControlState == LongCtrlState.off:
+      accel_diff = 0.0
+    elif actuators.longControlState == LongCtrlState.stopping:# or hud_control.softHold > 0:
+      accel_diff = 0.0
+    else:
+      accel_diff = self.accel_raw - self.accel_last_jerk
+
+    accel_diff /= DT_CTRL
+    self.jerk = self.jerk * 0.9 + accel_diff * 0.1
+    return self.jerk
+
+  def make_jerk(self, CS, accel, actuators):
+    jerk = self.cal_jerk(accel, actuators)
+    a_error = accel - CS.out.aEgo
+    jerk = jerk + (a_error * 2.0)
+
+    if not self.hkg_custom_long_tuning:
+      self.jerk_u = 3.0 if actuators.longControlState == LongCtrlState.pid else 1.0
+      self.jerk_l = 5.0
+    else:
+      startingJerk = 0.5
+      jerkLimit = 5.0
+      self.jerk_count += DT_CTRL
+      jerk_max = interp(self.jerk_count, [0, 1.5, 2.5], [startingJerk, startingJerk, jerkLimit])
+      if actuators.longControlState == LongCtrlState.off:
+        self.jerk_u = jerkLimit
+        self.jerk_l = jerkLimit
+        self.jerk_count = 0
+      else:
+        self.jerk_u = min(max(0.5, jerk * 2.0), jerk_max)
+        self.jerk_l = min(max(1.0, -jerk * 3.0), jerkLimit)
+
+  def make_accel(self, CS, actuators):
+    long_control = actuators.longControlState
+    if long_control == LongCtrlState.off or (long_control == LongCtrlState.stopping and CS.out.standstill):
+      self.accel_raw, self.accel_val = 0, 0
+    else:
+      self.accel_val = self.accel_raw
+    self.accel_last = self.accel_val
+    self.accel_last_jerk = self.accel_val
