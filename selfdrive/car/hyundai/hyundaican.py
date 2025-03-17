@@ -239,7 +239,7 @@ def create_new_acc_commands(packer, enabled, accel_raw, accel_val, lower_jerk, u
       scc12_values["CF_VSM_DecCmdAct"] = CS.escc_aeb_dec_cmd_act
       scc12_values["CR_VSM_DecCmd"] = CS.escc_aeb_dec_cmd
 
-  scc12_dat = packer.make_can_msg("SCC12", 0, scc12_values)[1]
+  scc12_dat = packer.make_can_msg("SCC12", 0, scc12_values)[2]
   scc12_values["CR_VSM_ChkSum"] = 0x10 - sum(sum(divmod(i, 16)) for i in scc12_dat) % 0x10
 
   commands.append(packer.make_can_msg("SCC12", 0, scc12_values))
@@ -270,7 +270,7 @@ def create_new_acc_commands(packer, enabled, accel_raw, accel_val, lower_jerk, u
         "FCA_DrvSetStatus": 1,
         "FCA_Status": 1,  # AEB disabled
       }
-    fca11_dat = packer.make_can_msg("FCA11", 0, fca11_values)[1]
+    fca11_dat = packer.make_can_msg("FCA11", 0, fca11_values)[2]
     fca11_values["CR_FCA_ChkSum"] = hyundai_checksum(fca11_dat[:7])
     commands.append(packer.make_can_msg("FCA11", 0, fca11_values))
 
