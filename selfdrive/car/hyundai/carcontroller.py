@@ -475,7 +475,7 @@ class CarController(CarControllerBase):
         if self.clip_accel:
           #jerk = min(self.jerk_u, self.jerk_limit) #确保self.jerk_u不会超过self.jerk_limit
           jerk = self.jerk_limit
-          can_sends.extend(hyundaican.create_new_acc_commands(self.packer, CC.enabled and CS.out.cruiseState.enabled, accel, accel, max(1.0, jerk), jerk, int(self.frame / 2),
+          can_sends.extend(hyundaican.create_new_acc_commands(self.packer, CC.enabled and CS.out.cruiseState.enabled, accel, accel, self.jerk_l, jerk, int(self.frame / 2),
                                                               hud_control, set_speed_in_units, stopping,
                                                               CC.cruiseControl.override, use_fca, CS, escc, self.CP, self.lead_distance, self.cb_lower, self.cb_upper))
         else:
