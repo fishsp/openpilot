@@ -304,12 +304,7 @@ class CarController(CarControllerBase):
             jerk_limit = speed_limits[22.22]["jerk"]  # 最小 jerk
             accel_limit = speed_limits[22.22]["accel"]  # 最小加速度
           else:
-            # 查找对应车速区间的 jerk 和 accel 限制值
-            for speed_limit, limits in reversed(sorted(speed_limits.items())):
-              if speed >= speed_limit:
-                jerk_limit = limits["jerk"]
-                accel_limit = limits["accel"]
-                break
+            jerk, accel_limit = self.get_jerk_accel(speed, speed_limits) #根据速度查表并插值
 
         # 由非巡航状态变为设置巡航状态
         cruise_state_change = not self.cruiseState_last and CS.out.cruiseState.enabled
@@ -647,3 +642,34 @@ class CarController(CarControllerBase):
       self.accel_val = self.accel_raw
     self.accel_last = self.accel_val
     self.accel_last_jerk = self.accel_val
+
+  def get_jerk_accel(self, speed, speed_limits):
+    speed_keys = sorted(speed_limits.keys())  # 获取所有速度点，已排序
+    low_speed = high_speed = speed_keys[0]
+
+    # 处理超出范围的情况
+    if speed <= speed_keys[0]:  # 低于最小值
+      low_speed = high_speed = speed_keys[0]
+    elif speed >= speed_keys[-1]:  # 超过最大值
+      low_speed = high_speed = speed_keys[-1]
+    else:
+      # 查找 speed 所在的区间
+      for i in range(len(speed_keys) - 1):
+        if speed_keys[i] <= speed <= speed_keys[i + 1]:
+          low_speed, high_speed = speed_keys[i], speed_keys[i + 1]
+          break
+
+    # 获取对应的 jerk 和 accel
+    low_limits = speed_limits[low_speed]
+    high_limits = speed_limits[high_speed]
+
+    # 计算插值比例
+    if low_speed == high_speed:  # 速度刚好匹配表中的值
+      jerk = low_limits["jerk"]
+      accel_limit = low_limits["accel"]
+    else:
+      ratio = (speed - low_speed) / (high_speed - low_speed)  # 线性插值系数
+      jerk = low_limits["jerk"] + (high_limits["jerk"] - low_limits["jerk"]) * ratio
+      accel_limit = low_limits["accel"] + (high_limits["accel"] - low_limits["accel"]) * ratio
+
+    return jerk, accel_limit
