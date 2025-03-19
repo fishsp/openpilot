@@ -249,6 +249,7 @@ class LongitudinalMpc:
     self.solver = AcadosOcpSolverCython(MODEL_NAME, ACADOS_SOLVER_TYPE, N)
     self.reset()
     self.source = SOURCES[2]
+    self.frame = 0
 
     self.e2e_x = np.zeros(13, dtype=np.float64)
 
@@ -362,6 +363,9 @@ class LongitudinalMpc:
     t_follow = get_dynamic_personality(v_ego, personality)
     self.status = radarstate.leadOne.status or radarstate.leadTwo.status
 
+    if self.frame % 100 == 0:
+      print(f"long_mpc, v_ego: {v_ego} t_follow: {t_follow}")
+
     lead_xv_0 = self.process_lead(radarstate.leadOne)
     lead_xv_1 = self.process_lead(radarstate.leadTwo)
 
@@ -445,6 +449,8 @@ class LongitudinalMpc:
       if any((lead_1_obstacle - get_safe_obstacle_distance(self.x_sol[:,1], t_follow))- self.x_sol[:,0] < 0.0) and \
          (lead_1_obstacle[0] - lead_0_obstacle[0]):
         self.source = 'lead1'
+
+    self.frame += 1
 
   def run(self):
     # t0 = time.monotonic()
