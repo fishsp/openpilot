@@ -10,6 +10,7 @@ from openpilot.common.swaglog import cloudlog
 from openpilot.selfdrive.modeld.constants import index_function
 from openpilot.selfdrive.car.interfaces import ACCEL_MIN
 from openpilot.selfdrive.controls.radard import _LEAD_ACCEL_TAU
+from openpilot.common.logger import logger
 
 if __name__ == '__main__':  # generating code
   from openpilot.third_party.acados.acados_template import AcadosModel, AcadosOcp, AcadosOcpSolver
@@ -364,7 +365,7 @@ class LongitudinalMpc:
     self.status = radarstate.leadOne.status or radarstate.leadTwo.status
 
     if self.frame % 100 == 0:
-      print(f"long_mpc, v_ego: {v_ego} t_follow: {t_follow}")
+      logger.log("long_mpc", v_ego=v_ego, t_follow=t_follow, v_cruise=v_cruise, lead_status=self.status)
 
     lead_xv_0 = self.process_lead(radarstate.leadOne)
     lead_xv_1 = self.process_lead(radarstate.leadTwo)
