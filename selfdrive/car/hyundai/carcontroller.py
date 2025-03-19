@@ -69,11 +69,14 @@ class CarController(CarControllerBase):
     self.target_accel = 0.0
     self.jerk_limit = 0.0
     self.cruiseState_last = False
-    self.accel_limit = 0
-    self.accel_start = 0
+    self.accel_limit = 0.0
+    self.accel_start = 0.0
     self.clip_accel = False
     self.long_control_time = 0.0
     self.long_log = False
+    self.jerk_limit_org = 0.0
+    self.accel_limit_org = 0.0
+    self.normal_log_num = 0
 
     sub_services = ['longitudinalPlanSP']
     if CP.openpilotLongitudinalControl:
@@ -346,17 +349,21 @@ class CarController(CarControllerBase):
       # 纵向控制日志计时
       if speed < 0.05: # 速度小于0.05m/s时认为停车了
         if self.long_log:
-          logger.log("======long log end======", aEgo=CS.out.aEgo, speed=speed)
+          logger.log("long log end", aEgo=CS.out.aEgo, speed=speed)
+          logger.log("=======================================================")
         self.long_control_time = 0
         self.long_log = False
       elif self.long_control_time < 15.0: # 纵向控制的前15秒快速记录日志
         self.long_control_time += DT_CTRL
         if not self.long_log:
-          logger.log("======long log start======", aEgo=CS.out.aEgo, speed=speed)
+          logger.log("=======================================================")
+          logger.log("long log start", aEgo=CS.out.aEgo, speed=speed)
+          self.normal_log_num = 0
         self.long_log = True
       else:
         if self.long_log:
-          logger.log("======long log end======", aEgo=CS.out.aEgo, speed=speed)
+          logger.log("long log end", aEgo=CS.out.aEgo, speed=speed)
+          logger.log("=======================================================")
         self.long_log = False
 
       # 默认的加速度限制和jerk限制
@@ -408,6 +415,8 @@ class CarController(CarControllerBase):
           self.accel_ramp_time = 0  # 复位
 
         self.cruiseState_last = CS.out.cruiseState.enabled  # 记录状态
+        self.jerk_limit_org = jerk_limit
+        self.accel_limit_org = accel_limit
 
         # 使用 clip 限制加速度，确保加速度在指定范围内(开启斯巴鲁驻车选项后)
         accel = clip(actuators.accel, CarControllerParams.ACCEL_MIN, self.accel_limit)
@@ -415,18 +424,10 @@ class CarController(CarControllerBase):
       else:
         self.accel_limit = accel_limit
         self.jerk_limit = jerk_limit
+        self.jerk_limit_org = jerk_limit
+        self.accel_limit_org = accel_limit
 
       self.make_jerk(CS, accel, actuators)
-
-      if self.long_log:
-        if self.frame % 2 == 0:
-          logger.log("fast long log", aEgo=CS.out.aEgo, speed=speed, accel=accel, actuators_accel=actuators.accel,
-                     accel_limit=accel_limit, jerk_limit=jerk_limit, self_accel_limit=self.accel_limit,
-                     self_jerk_limit=self.jerk_limit, jerk_l=self.jerk_l, jerk_u=self.jerk_u)
-      elif self.frame % 200 == 0: # 每2秒记录一次日志
-        logger.log("normal long log", aEgo=CS.out.aEgo, speed=speed, accel=accel, actuators_accel=actuators.accel,
-                   accel_limit=accel_limit, jerk_limit=jerk_limit, self_accel_limit=self.accel_limit,
-                   self_jerk_limit=self.jerk_limit, jerk_l=self.jerk_l, jerk_u=self.jerk_u)
 
     # CAN-FD platforms
     if self.CP.carFingerprint in CANFD_CAR:
@@ -506,9 +507,16 @@ class CarController(CarControllerBase):
         self.make_accel(CS, actuators)
 
         if self.long_log:
-          logger.log("fast accel log", actuators_accel= actuators.accel, accel=accel, accel_raw=self.accel_raw, accel_val=self.accel_val)
-        elif self.frame % 200 == 0:
-          logger.log("normal accel log", actuators_accel=actuators.accel, accel=accel, accel_raw=self.accel_raw, accel_val=self.accel_val)
+          logger.log("fast long log", speed=CS.out.vEgo, accel=accel, aEgo=CS.out.aEgo, actuators_accel=actuators.accel,
+                     accel_raw=self.accel_raw, accel_val=self.accel_val, accel_limit=self.accel_limit_org, self_accel_limit=self.accel_limit,
+                     jerk_limit=self.jerk_limit_org, self_jerk_limit=self.jerk_limit, jerk_l=self.jerk_l, jerk_u=self.jerk_u)
+        elif (self.frame % 200 == 0) and (self.normal_log_num < 300):  # 平常每2秒记录一次日志(共记录300条，10分钟)
+          self.normal_log_num += 1
+          logger.log("normal long log", speed=CS.out.vEgo, accel=accel, aEgo=CS.out.aEgo, actuators_accel=actuators.accel,
+                     accel_raw=self.accel_raw, accel_val=self.accel_val, accel_limit=self.accel_limit_org,
+                     self_accel_limit=self.accel_limit,
+                     jerk_limit=self.jerk_limit_org, self_jerk_limit=self.jerk_limit, jerk_l=self.jerk_l,
+                     jerk_u=self.jerk_u)
 
         #if self.manual_parking_brake  or self.stock_long_toyota: #开启斯巴鲁驻车选项后
         if self.clip_accel:
