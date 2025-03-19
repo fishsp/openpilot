@@ -335,6 +335,7 @@ class CarController(CarControllerBase):
         self.accel_ramp_time = 0.0
 
       # 由非巡航状态变为巡航状态
+      cruise_ramp = False
       cruise_state_change = not self.cruiseState_last and CS.out.cruiseState.enabled
 
       if cruise_state_change: # 巡航状态变化
@@ -348,6 +349,7 @@ class CarController(CarControllerBase):
       if CS.out.cruiseState.enabled and self.stock_long_toyota:  # 打开了丰田纵向开关才允许平滑
         accel_ramp_time_max = 3.0
         if self.accel_ramp_time < accel_ramp_time_max:
+          cruise_ramp = True
           self.accel_ramp_time += DT_CTRL
           self.accel_ramp_time = min(self.accel_ramp_time, accel_ramp_time_max)  # 确保不会超过 3.0
           self.accel_limit = interp(self.accel_ramp_time, [0, accel_ramp_time_max],
@@ -369,7 +371,7 @@ class CarController(CarControllerBase):
       self.jerk_limit_org = jerk_limit
       self.accel_limit_org = accel_limit
 
-      if (actuators.accel >= 0) and not self.hkg_custom_long_tuning:  # 加速度大于指定值时
+      if (actuators.accel >= 0) and (not self.hkg_custom_long_tuning or cruise_ramp):  # 加速度大于指定值时
         accel = clip(actuators.accel, CarControllerParams.ACCEL_MIN, self.accel_limit) # 使用 clip 限制加速度，确保加速度在指定范围内
         self.clip_accel = True
 
