@@ -364,8 +364,8 @@ class LongitudinalMpc:
     t_follow = get_dynamic_personality(v_ego, personality)
     self.status = radarstate.leadOne.status or radarstate.leadTwo.status
 
-    if self.frame % 100 == 0:
-      logger.log("long_mpc", v_ego=v_ego, t_follow=t_follow, v_cruise=v_cruise, lead_status=self.status)
+    #if self.frame % 100 == 0:
+    #  logger.log("long_mpc", v_ego=v_ego, t_follow=t_follow, v_cruise=v_cruise, lead_status=self.status)
 
     lead_xv_0 = self.process_lead(radarstate.leadOne)
     lead_xv_1 = self.process_lead(radarstate.leadTwo)
