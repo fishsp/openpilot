@@ -369,7 +369,7 @@ class CarController(CarControllerBase):
       self.jerk_limit_org = jerk_limit
       self.accel_limit_org = accel_limit
 
-      if actuators.accel >= 0:  # 加速度大于指定值时
+      if (actuators.accel >= 0) and not self.hkg_custom_long_tuning:  # 加速度大于指定值时
         accel = clip(actuators.accel, CarControllerParams.ACCEL_MIN, self.accel_limit) # 使用 clip 限制加速度，确保加速度在指定范围内
         self.clip_accel = True
 
@@ -668,10 +668,10 @@ class CarController(CarControllerBase):
     a_error = accel - CS.out.aEgo
     jerk = jerk + (a_error * 2.0)
 
-    if not self.hkg_custom_long_tuning:
-      self.jerk_u = 3.0 if actuators.longControlState == LongCtrlState.pid else 1.0
-      self.jerk_l = 5.0
-    else:
+    #if not self.hkg_custom_long_tuning:
+    #  self.jerk_u = 3.0 if actuators.longControlState == LongCtrlState.pid else 1.0
+    #  self.jerk_l = 5.0
+    #else:
       startingJerk = 0.5
       jerkLimit = 5.0
       self.jerk_count += DT_CTRL
