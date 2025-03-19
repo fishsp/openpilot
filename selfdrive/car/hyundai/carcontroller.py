@@ -11,6 +11,7 @@ from openpilot.selfdrive.car.hyundai.hyundaicanfd import CanBus
 from openpilot.selfdrive.car.hyundai.values import HyundaiFlags, HyundaiFlagsSP, Buttons, CarControllerParams, CANFD_CAR, CAR, CAMERA_SCC_CAR, LEGACY_SAFETY_MODE_CAR
 from openpilot.selfdrive.car.interfaces import CarControllerBase
 from openpilot.selfdrive.controls.lib.drive_helpers import HYUNDAI_V_CRUISE_MIN
+from openpilot.common.logger import logger
 
 VisualAlert = car.CarControl.HUDControl.VisualAlert
 LongCtrlState = car.CarControl.Actuators.LongControlState
@@ -71,6 +72,8 @@ class CarController(CarControllerBase):
     self.accel_limit = 0
     self.accel_start = 0
     self.clip_accel = False
+    self.long_control_time = 0.0
+    self.long_log = False
 
     sub_services = ['longitudinalPlanSP']
     if CP.openpilotLongitudinalControl:
@@ -340,6 +343,16 @@ class CarController(CarControllerBase):
         else:
           speed_limits = non_pid_speed2_limits
 
+      # 纵向控制计时
+      if actuators.longControlState == LongCtrlState.off:
+        self.long_control_time = 0
+        self.long_log = False
+      elif self.long_control_time < 30.0: # 纵向控制的前30秒快速记录日志
+        self.long_control_time += DT_CTRL
+        self.long_log = True
+      else:
+        self.long_log = False
+
       # 默认的加速度限制和jerk限制
       accel_limit = CarControllerParams.ACCEL_MAX
       jerk_limit = 3.0
@@ -367,6 +380,7 @@ class CarController(CarControllerBase):
           self.accel_start = min(CS.out.aEgo, accel_limit)  #在CS.out.aEgo, accel_limit中选小的作为初始加速度限制
           if self.accel_start < 0.1:
             self.accel_start = 0.1
+          logger.log("cruise start", aEgo=CS.out.aEgo, speed=speed, accel_start=self.accel_start, accel_limit=accel_limit, jerk_limit=jerk_limit)
 
         if CS.out.cruiseState.enabled and self.stock_long_toyota:  # 打开了丰田纵向开关才允许平滑
           accel_ramp_time_max = 3.0
@@ -376,8 +390,9 @@ class CarController(CarControllerBase):
             self.accel_limit = interp(self.accel_ramp_time, [0, accel_ramp_time_max], [self.accel_start, max(self.accel_start, accel_limit)])
             self.jerk_limit = interp(self.accel_ramp_time, [0, accel_ramp_time_max], [0.2, max(0.2, jerk_limit)])
 
-            if self.frame % 10 == 0:
-              print(f"ramp accel_limit: {self.accel_limit} jerk_limit: {self.jerk_limit}")
+            if self.frame % 2 == 0:
+              logger.log("cruise ramp", time=self.accel_ramp_time, self_accel_limit=self.accel_limit,
+                         self_jerk_limit=self.jerk_limit, accel_limit=accel_limit, jerk_limit=jerk_limit)
           else:
             self.accel_limit = accel_limit  # 3秒后直接使用PID加速度
             self.jerk_limit = jerk_limit  # 3秒后直接使用jerk
@@ -397,9 +412,15 @@ class CarController(CarControllerBase):
 
       self.make_jerk(CS, accel, actuators)
 
-      if self.frame % 100 == 0:
-        print(f"accel_limit: {self.accel_limit} jerk_limit: {self.jerk_limit} accel: {accel}")
-        print(f"accel_raw: {self.accel_raw} accel_val: {self.accel_val} jerk_l: {self.jerk_l} jerk_u: {self.jerk_u}")
+      if self.long_log:
+        if self.frame % 2 == 0:
+          logger.log("fast long log", aEgo=CS.out.aEgo, speed=speed, accel=accel, actuators_accel=actuators.accel,
+                     accel_limit=accel_limit, jerk_limit=jerk_limit, self_accel_limit=self.accel_limit,
+                     self_jerk_limit=self.jerk_limit, jerk_l=self.jerk_l, jerk_u=self.jerk_u)
+      elif self.frame % 200 == 0: # 每2秒记录一次日志
+        logger.log("normal long log", aEgo=CS.out.aEgo, speed=speed, accel=accel, actuators_accel=actuators.accel,
+                   accel_limit=accel_limit, jerk_limit=jerk_limit, self_accel_limit=self.accel_limit,
+                   self_jerk_limit=self.jerk_limit, jerk_l=self.jerk_l, jerk_u=self.jerk_u)
 
     # CAN-FD platforms
     if self.CP.carFingerprint in CANFD_CAR:
@@ -477,6 +498,11 @@ class CarController(CarControllerBase):
         jerk = 3.0 if actuators.longControlState == LongCtrlState.pid else 1.0
         use_fca = self.CP.flags & HyundaiFlags.USE_FCA.value
         self.make_accel(CS, actuators)
+
+        if self.long_log:
+          logger.log("fast accel log", actuators_accel= actuators.accel, accel=accel, accel_raw=self.accel_raw, accel_val=self.accel_val)
+        elif self.frame % 200 == 0:
+          logger.log("normal accel log", actuators_accel=actuators.accel, accel=accel, accel_raw=self.accel_raw, accel_val=self.accel_val)
 
         #if self.manual_parking_brake  or self.stock_long_toyota: #开启斯巴鲁驻车选项后
         if self.clip_accel:
