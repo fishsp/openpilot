@@ -343,13 +343,13 @@ class CarController(CarControllerBase):
         else:
           speed_limits = non_pid_speed2_limits
 
-      # 纵向控制计时
-      if actuators.longControlState == LongCtrlState.off:
+      # 纵向控制日志计时
+      if speed < 0.05: # 速度小于0.05m/s时认为停车了
         if self.long_log:
           logger.log("long log end", aEgo=CS.out.aEgo, speed=speed)
         self.long_control_time = 0
         self.long_log = False
-      elif self.long_control_time < 30.0: # 纵向控制的前30秒快速记录日志
+      elif self.long_control_time < 15.0: # 纵向控制的前15秒快速记录日志
         self.long_control_time += DT_CTRL
         if not self.long_log:
           logger.log("long control start", aEgo=CS.out.aEgo, speed=speed)
@@ -376,7 +376,7 @@ class CarController(CarControllerBase):
           jerk_limit = speed_limits[22.22]["jerk"]  # 最小 jerk
           accel_limit = speed_limits[22.22]["accel"]  # 最小加速度
         else:
-          jerk, accel_limit = self.get_jerk_accel(speed, speed_limits)  # 根据速度查表并插值
+          jerk_limit, accel_limit = self.get_jerk_accel(speed, speed_limits)  # 根据速度查表并插值
 
         # 由非巡航状态变为设置巡航状态
         cruise_state_change = not self.cruiseState_last and CS.out.cruiseState.enabled
