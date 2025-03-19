@@ -668,10 +668,10 @@ class CarController(CarControllerBase):
     a_error = accel - CS.out.aEgo
     jerk = jerk + (a_error * 2.0)
 
-    #if not self.hkg_custom_long_tuning:
-    #  self.jerk_u = 3.0 if actuators.longControlState == LongCtrlState.pid else 1.0
-    #  self.jerk_l = 5.0
-    #else:
+    if False: #not self.hkg_custom_long_tuning:
+      self.jerk_u = 3.0 if actuators.longControlState == LongCtrlState.pid else 1.0
+      self.jerk_l = 5.0
+    else:
       startingJerk = 0.5
       jerkLimit = 5.0
       self.jerk_count += DT_CTRL
