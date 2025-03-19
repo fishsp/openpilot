@@ -320,62 +320,58 @@ class CarController(CarControllerBase):
       accel_limit = CarControllerParams.ACCEL_MAX
       jerk_limit = 3.0
 
+      # 根据当前速度决定jerk和accel的限制值
+      if speed <= 0:  # 车速小于 0 km/h
+        jerk_limit = speed_limits[0]["jerk"]  # 最大 jerk
+        accel_limit = speed_limits[0]["accel"]  # 最大加速度
+      elif speed >= 22.22:  # 车速大于 80 km/h (22.22 m/s)
+        jerk_limit = speed_limits[22.22]["jerk"]  # 最小 jerk
+        accel_limit = speed_limits[22.22]["accel"]  # 最小加速度
+      else:
+        jerk_limit, accel_limit = self.get_jerk_accel(speed, speed_limits)  # 根据速度查表并插值
+
       # 非巡航状态则重置self.accel_ramp_time
       if not CS.out.cruiseState.enabled:
         self.accel_ramp_time = 0.0
 
-      if actuators.accel >= 0: #加速时
-        #根据当前速度决定jerk和accel的限制值
-        if speed <= 0:  # 车速小于 0 km/h
-          jerk_limit = speed_limits[0]["jerk"]  # 最大 jerk
-          accel_limit = speed_limits[0]["accel"]  # 最大加速度
-        elif speed >= 22.22:  # 车速大于 80 km/h (22.22 m/s)
-          jerk_limit = speed_limits[22.22]["jerk"]  # 最小 jerk
-          accel_limit = speed_limits[22.22]["accel"]  # 最小加速度
+      # 由非巡航状态变为巡航状态
+      cruise_state_change = not self.cruiseState_last and CS.out.cruiseState.enabled
+
+      if cruise_state_change: # 巡航状态变化
+        self.accel_ramp_time = 0.0  # 计时清0
+        self.accel_start = min(CS.out.aEgo, accel_limit)  # 在CS.out.aEgo, accel_limit中选小的作为初始加速度限制
+        if self.accel_start < 0.1:
+          self.accel_start = 0.1
+        logger.log("cruise start", aEgo=CS.out.aEgo, speed=speed, accel_start=self.accel_start,
+                   accel_limit=accel_limit, jerk_limit=jerk_limit)
+
+      if CS.out.cruiseState.enabled and self.stock_long_toyota:  # 打开了丰田纵向开关才允许平滑
+        accel_ramp_time_max = 3.0
+        if self.accel_ramp_time < accel_ramp_time_max:
+          self.accel_ramp_time += DT_CTRL
+          self.accel_ramp_time = min(self.accel_ramp_time, accel_ramp_time_max)  # 确保不会超过 3.0
+          self.accel_limit = interp(self.accel_ramp_time, [0, accel_ramp_time_max],
+                                    [self.accel_start, max(self.accel_start, accel_limit)])
+          self.jerk_limit = interp(self.accel_ramp_time, [0, accel_ramp_time_max], [0.2, max(0.2, jerk_limit)])
+
+          if self.frame % 2 == 0:
+            logger.log("cruise ramp", time=self.accel_ramp_time, self_accel_limit=self.accel_limit,
+                       self_jerk_limit=self.jerk_limit, accel_limit=accel_limit, jerk_limit=jerk_limit)
         else:
-          jerk_limit, accel_limit = self.get_jerk_accel(speed, speed_limits)  # 根据速度查表并插值
-
-        # 由非巡航状态变为设置巡航状态
-        cruise_state_change = not self.cruiseState_last and CS.out.cruiseState.enabled
-
-        if cruise_state_change:
-          self.accel_ramp_time = 0.0  # 计时清0
-          self.accel_start = min(CS.out.aEgo, accel_limit)  #在CS.out.aEgo, accel_limit中选小的作为初始加速度限制
-          if self.accel_start < 0.1:
-            self.accel_start = 0.1
-          logger.log("cruise start", aEgo=CS.out.aEgo, speed=speed, accel_start=self.accel_start, accel_limit=accel_limit, jerk_limit=jerk_limit)
-
-        if CS.out.cruiseState.enabled and self.stock_long_toyota:  # 打开了丰田纵向开关才允许平滑
-          accel_ramp_time_max = 3.0
-          if self.accel_ramp_time < accel_ramp_time_max:
-            self.accel_ramp_time += DT_CTRL
-            self.accel_ramp_time = min(self.accel_ramp_time, accel_ramp_time_max)  # 确保不会超过 3.0
-            self.accel_limit = interp(self.accel_ramp_time, [0, accel_ramp_time_max], [self.accel_start, max(self.accel_start, accel_limit)])
-            self.jerk_limit = interp(self.accel_ramp_time, [0, accel_ramp_time_max], [0.2, max(0.2, jerk_limit)])
-
-            if self.frame % 2 == 0:
-              logger.log("cruise ramp", time=self.accel_ramp_time, self_accel_limit=self.accel_limit,
-                         self_jerk_limit=self.jerk_limit, accel_limit=accel_limit, jerk_limit=jerk_limit)
-          else:
-            self.accel_limit = accel_limit  # 3秒后直接使用PID加速度
-            self.jerk_limit = jerk_limit  # 3秒后直接使用jerk
-        else:
-          self.accel_limit = accel_limit
-          self.jerk_limit = jerk_limit
-          self.accel_ramp_time = 0  # 复位
-
-        self.cruiseState_last = CS.out.cruiseState.enabled  # 记录状态
-        self.jerk_limit_org = jerk_limit
-        self.accel_limit_org = accel_limit
-
-        # 使用 clip 限制加速度，确保加速度在指定范围内(开启斯巴鲁驻车选项后)
-        accel = clip(actuators.accel, CarControllerParams.ACCEL_MIN, self.accel_limit)
-        self.clip_accel = True
+          self.accel_limit = accel_limit  # 3秒后直接使用PID加速度
+          self.jerk_limit = jerk_limit  # 3秒后直接使用jerk
       else:
         self.accel_limit = accel_limit
         self.jerk_limit = jerk_limit
-        self.jerk_limit_org = jerk_limit
-        self.accel_limit_org = accel_limit
+        self.accel_ramp_time = 0  # 复位
+
+      self.cruiseState_last = CS.out.cruiseState.enabled  # 记录状态
+      self.jerk_limit_org = jerk_limit
+      self.accel_limit_org = accel_limit
+
+      if actuators.accel >= 0:  # 加速度大于指定值时
+        accel = clip(actuators.accel, CarControllerParams.ACCEL_MIN, self.accel_limit) # 使用 clip 限制加速度，确保加速度在指定范围内
+        self.clip_accel = True
 
       self.make_jerk(CS, accel, actuators)
 
