@@ -246,8 +246,8 @@ class CarController(CarControllerBase):
       speed = CS.out.vEgoRaw  # 当前车速（m/s）
       # 定义车速区间对应的 jerk 和 accel 限制值
       pid_speed_limits = {
-        0: {"jerk": 0.4, "accel": 1.0},  # 0 km/h
-        0.56: {"jerk": 0.5, "accel": 1.2},  # 2 km/h
+        0: {"jerk": 0.4, "accel": 0.6},  # 0 km/h
+        0.56: {"jerk": 0.5, "accel": 0.9},  # 2 km/h
         1.11: {"jerk": 0.6, "accel": 1.4},  # 4 km/h
         1.67: {"jerk": 0.8, "accel": 1.6},  # 6 km/h
         2.22: {"jerk": 1.2, "accel": 1.8},  # 8 km/h
