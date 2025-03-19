@@ -375,6 +375,9 @@ class CarController(CarControllerBase):
             self.accel_ramp_time = min(self.accel_ramp_time, accel_ramp_time_max)  # 确保不会超过 3.0
             self.accel_limit = interp(self.accel_ramp_time, [0, accel_ramp_time_max], [self.accel_start, max(self.accel_start, accel_limit)])
             self.jerk_limit = interp(self.accel_ramp_time, [0, accel_ramp_time_max], [0.2, max(0.2, jerk_limit)])
+
+            if self.frame % 10 == 0:
+              print(f"ramp accel_limit: {self.accel_limit} jerk_limit: {self.jerk_limit}")
           else:
             self.accel_limit = accel_limit  # 3秒后直接使用PID加速度
             self.jerk_limit = jerk_limit  # 3秒后直接使用jerk
@@ -393,6 +396,10 @@ class CarController(CarControllerBase):
         self.jerk_limit = jerk_limit
 
       self.make_jerk(CS, accel, actuators)
+
+      if self.frame % 100 == 0:
+        print(f"accel_limit: {self.accel_limit} jerk_limit: {self.jerk_limit} accel: {accel}")
+        print(f"accel_raw: {self.accel_raw} accel_val: {self.accel_val} jerk_l: {self.jerk_l} jerk_u: {self.jerk_u}")
 
     # CAN-FD platforms
     if self.CP.carFingerprint in CANFD_CAR:
