@@ -346,17 +346,17 @@ class CarController(CarControllerBase):
       # 纵向控制日志计时
       if speed < 0.05: # 速度小于0.05m/s时认为停车了
         if self.long_log:
-          logger.log("long log end", aEgo=CS.out.aEgo, speed=speed)
+          logger.log("======long log end======", aEgo=CS.out.aEgo, speed=speed)
         self.long_control_time = 0
         self.long_log = False
       elif self.long_control_time < 15.0: # 纵向控制的前15秒快速记录日志
         self.long_control_time += DT_CTRL
         if not self.long_log:
-          logger.log("long control start", aEgo=CS.out.aEgo, speed=speed)
+          logger.log("======long log start======", aEgo=CS.out.aEgo, speed=speed)
         self.long_log = True
       else:
         if self.long_log:
-          logger.log("long log end", aEgo=CS.out.aEgo, speed=speed)
+          logger.log("======long log end======", aEgo=CS.out.aEgo, speed=speed)
         self.long_log = False
 
       # 默认的加速度限制和jerk限制
