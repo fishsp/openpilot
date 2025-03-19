@@ -345,12 +345,18 @@ class CarController(CarControllerBase):
 
       # 纵向控制计时
       if actuators.longControlState == LongCtrlState.off:
+        if self.long_log:
+          logger.log("long log end", aEgo=CS.out.aEgo, speed=speed)
         self.long_control_time = 0
         self.long_log = False
       elif self.long_control_time < 30.0: # 纵向控制的前30秒快速记录日志
         self.long_control_time += DT_CTRL
+        if not self.long_log:
+          logger.log("long control start", aEgo=CS.out.aEgo, speed=speed)
         self.long_log = True
       else:
+        if self.long_log:
+          logger.log("long log end", aEgo=CS.out.aEgo, speed=speed)
         self.long_log = False
 
       # 默认的加速度限制和jerk限制
