@@ -455,12 +455,12 @@ class CarController(CarControllerBase):
         self.make_accel(CS, actuators)
 
         if self.long_log:
-          logger.log("fast long log", speed=CS.out.vEgo, accel=accel, aEgo=CS.out.aEgo, actuators_accel=actuators.accel,
+          logger.log("fast long log", speed=CS.out.vEgo*3.6, accel=accel, aEgo=CS.out.aEgo, actuators_accel=actuators.accel,
                      accel_raw=self.accel_raw, accel_val=self.accel_val, accel_limit=self.accel_limit_org, self_accel_limit=self.accel_limit,
                      jerk_limit=self.jerk_limit_org, self_jerk_limit=self.jerk_limit, jerk_l=self.jerk_l, jerk_u=self.jerk_u)
         elif (self.frame % 200 == 0) and (self.normal_log_num < 300) and (actuators.longControlState != LongCtrlState.off):  # 平常每2秒记录一次日志(共记录300条，10分钟)
           self.normal_log_num += 1
-          logger.log("normal long log", speed=CS.out.vEgo, accel=accel, aEgo=CS.out.aEgo, actuators_accel=actuators.accel,
+          logger.log("normal long log", speed=CS.out.vEgo*3.6, accel=accel, aEgo=CS.out.aEgo, actuators_accel=actuators.accel,
                      accel_raw=self.accel_raw, accel_val=self.accel_val, accel_limit=self.accel_limit_org,
                      self_accel_limit=self.accel_limit,
                      jerk_limit=self.jerk_limit_org, self_jerk_limit=self.jerk_limit, jerk_l=self.jerk_l,
