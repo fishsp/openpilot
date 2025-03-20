@@ -29,10 +29,13 @@ A_CRUISE_MIN = -1.2
 #A_CRUISE_MAX_VALS = [1.6, 1.2, 0.8, 0.6]
 #A_CRUISE_MAX_BP =   [0., 10.0, 25., 40.]
 #            km/h    0    36    90   144
+
 A_CRUISE_MAX_VALS = [2.0, 2.0,  2.0,  1.5,  1.0,   0.9,   0.85,  0.6,   0.5,  .43,  .32,  .088]
 #A_CRUISE_MAX_VALS = [1.6, 1.6,  1.6,  1.2,  1.0,   0.9,   0.8,   0.7,   0.5,  .43,  .32,  .088]
 #A_CRUISE_MAX_VALS = [1.4, 1.4,  1.4,  1.2,  1.0,   0.9,   0.8,   0.7,   0.5,  .43,  .32,  .088]
 #A_CRUISE_MAX_VALS = [1.2, 1.2,  1.2,  1.2,  1.0,   0.9,   0.8,   0.7,   0.5,  .43,  .32,  .088]
+A_CRUISE_ECO_VALS = [1.6, 1.6,  1.6,  1.2,  1.0,   0.9,   0.8,   0.7,   0.5,  .43,  .32,  .088]
+
 A_CRUISE_MAX_BP =   [0.,  2.78, 5.56, 8.33, 11.11, 13.33, 15.55, 17.78, 22.22, 25.,  30.,  55.]
 #            km/h    0    10    20    30    40     50     60     70     80     90    108   198
 
@@ -48,7 +51,7 @@ def get_max_accel(v_ego):
   return interp(v_ego, A_CRUISE_MAX_BP, A_CRUISE_MAX_VALS)
 
 def get_eco_max_accel(v_ego):
-  return interp(v_ego, _DP_CRUISE_MAX_BP, _DP_CRUISE_MAX_V_ECO)
+  return interp(v_ego, A_CRUISE_MAX_BP, A_CRUISE_ECO_VALS)
 
 def limit_accel_in_turns(v_ego, angle_steers, a_target, CP):
   """
@@ -90,8 +93,12 @@ class LongitudinalPlanner:
     self.events = Events()
     self.turn_speed_controller = TurnSpeedController()
     self.dynamic_experimental_controller = DynamicExperimentalController()
+    self.manual_parking_brake = self.param_s.get_bool("SubaruManualParkingBrakeSng")
+    self.stock_long_toyota = self.param_s.get_bool("StockLongToyota")
 
   def read_param(self):
+    self.manual_parking_brake = self.param_s.get_bool("SubaruManualParkingBrakeSng")
+    self.stock_long_toyota = self.param_s.get_bool("StockLongToyota")
     try:
       self.dynamic_experimental_controller.set_enabled(self.params.get_bool("DynamicExperimentalControl"))
     except AttributeError:
@@ -135,9 +142,17 @@ class LongitudinalPlanner:
     # No change cost when user is controlling the speed, or when standstill
     prev_accel_constraint = not (reset_state or sm['carState'].standstill)
 
+    # 使用HKG平滑停车和斯巴鲁驻车来选择ECO加速表
+    if self.stock_long_toyota and self.manual_parking_brake:
+      accel_limits = [A_CRUISE_MIN, get_eco_max_accel(v_ego)]
+      accel_limits_turns = limit_accel_in_turns(v_ego, sm['carState'].steeringAngleDeg, accel_limits, self.CP)
+    else:
+      accel_limits = [A_CRUISE_MIN, get_max_accel(v_ego)]
+      accel_limits_turns = limit_accel_in_turns(v_ego, sm['carState'].steeringAngleDeg, accel_limits, self.CP)
+
     #if self.mpc.mode == 'acc':
-    accel_limits = [A_CRUISE_MIN, get_max_accel(v_ego)]
-    accel_limits_turns = limit_accel_in_turns(v_ego, sm['carState'].steeringAngleDeg, accel_limits, self.CP)
+    #  accel_limits = [A_CRUISE_MIN, get_max_accel(v_ego)]
+    #  accel_limits_turns = limit_accel_in_turns(v_ego, sm['carState'].steeringAngleDeg, accel_limits, self.CP)
     #else:
     #  accel_limits = [ACCEL_MIN, ACCEL_MAX]
     #  accel_limits_turns = [ACCEL_MIN, ACCEL_MAX]
