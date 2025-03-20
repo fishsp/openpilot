@@ -371,7 +371,7 @@ class CarController(CarControllerBase):
       self.jerk_limit_org = jerk_limit
       self.accel_limit_org = accel_limit
 
-      if (actuators.accel >= 0) and (not self.hkg_custom_long_tuning or cruise_ramp):  # 加速度大于指定值时
+      if (actuators.accel >= 0) and (not self.hkg_custom_long_tuning or cruise_ramp):  # 加速度大于指定值时 or 没有开启新纵向开关(即HKG平滑停车开关)
         accel = clip(actuators.accel, CarControllerParams.ACCEL_MIN, self.accel_limit) # 使用 clip 限制加速度，确保加速度在指定范围内
         self.clip_accel = True
 
