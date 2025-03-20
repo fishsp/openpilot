@@ -343,7 +343,7 @@ class CarController(CarControllerBase):
         self.accel_start = min(CS.out.aEgo, accel_limit)  # 在CS.out.aEgo, accel_limit中选小的作为初始加速度限制
         if self.accel_start < 0.1:
           self.accel_start = 0.1
-        logger.log("cruise start", aEgo=CS.out.aEgo, speed=speed, accel_start=self.accel_start,
+        logger.log("cruise start", speed=speed, aEgo=CS.out.aEgo, accel_start=self.accel_start,
                    accel_limit=accel_limit, jerk_limit=jerk_limit)
 
       if CS.out.cruiseState.enabled and self.stock_long_toyota:  # 打开了丰田纵向开关才允许平滑
@@ -357,7 +357,7 @@ class CarController(CarControllerBase):
           self.jerk_limit = interp(self.accel_ramp_time, [0, accel_ramp_time_max], [0.2, max(0.2, jerk_limit)])
 
           if self.frame % 2 == 0:
-            logger.log("cruise ramp", time=self.accel_ramp_time, self_accel_limit=self.accel_limit,
+            logger.log("cruise ramp", time=self.accel_ramp_time, speed=speed, aEgo=CS.out.aEgo, self_accel_limit=self.accel_limit,
                        self_jerk_limit=self.jerk_limit, accel_limit=accel_limit, jerk_limit=jerk_limit)
         else:
           self.accel_limit = accel_limit  # 3秒后直接使用PID加速度
@@ -454,18 +454,21 @@ class CarController(CarControllerBase):
         use_fca = self.CP.flags & HyundaiFlags.USE_FCA.value
         self.make_accel(CS, actuators)
 
-        vego_kmh = CS.out.vEgo*3.6
-        if self.long_log:
-          logger.log("fast long log", speed=vego_kmh, accel=accel, aEgo=CS.out.aEgo, actuators_accel=actuators.accel,
-                     accel_raw=self.accel_raw, accel_val=self.accel_val, accel_limit=self.accel_limit_org, self_accel_limit=self.accel_limit,
-                     jerk_limit=self.jerk_limit_org, self_jerk_limit=self.jerk_limit, jerk_l=self.jerk_l, jerk_u=self.jerk_u)
-        elif (self.frame % 200 == 0) and (self.normal_log_num < 300) and (actuators.longControlState != LongCtrlState.off):  # 平常每2秒记录一次日志(共记录300条，10分钟)
-          self.normal_log_num += 1
-          logger.log("normal long log", speed=vego_kmh, accel=accel, aEgo=CS.out.aEgo, actuators_accel=actuators.accel,
-                     accel_raw=self.accel_raw, accel_val=self.accel_val, accel_limit=self.accel_limit_org,
-                     self_accel_limit=self.accel_limit,
-                     jerk_limit=self.jerk_limit_org, self_jerk_limit=self.jerk_limit, jerk_l=self.jerk_l,
-                     jerk_u=self.jerk_u)
+        if CS.out.cruiseState.enabled:
+          vego_kmh = CS.out.vEgo * 3.6
+          if self.long_log:
+            logger.log("fast long log", speed=vego_kmh, accel=accel, aEgo=CS.out.aEgo, actuators_accel=actuators.accel,
+                       accel_raw=self.accel_raw, accel_val=self.accel_val, accel_limit=self.accel_limit_org,
+                       self_accel_limit=self.accel_limit, jerk_limit=self.jerk_limit_org,
+                       self_jerk_limit=self.jerk_limit, jerk_l=self.jerk_l, jerk_u=self.jerk_u)
+          elif (self.frame % 200 == 0) and (self.normal_log_num < 30) and (
+                  actuators.longControlState != LongCtrlState.off):  # 平常每2秒记录一次日志(共记录300条，10分钟)
+            self.normal_log_num += 1
+            logger.log("normal long log", speed=vego_kmh, accel=accel, aEgo=CS.out.aEgo,
+                       actuators_accel=actuators.accel, accel_raw=self.accel_raw, accel_val=self.accel_val,
+                       accel_limit=self.accel_limit_org,
+                       self_accel_limit=self.accel_limit, jerk_limit=self.jerk_limit_org,
+                       self_jerk_limit=self.jerk_limit, jerk_l=self.jerk_l, jerk_u=self.jerk_u)
 
         #if self.manual_parking_brake  or self.stock_long_toyota: #开启斯巴鲁驻车选项后
         if self.clip_accel:
