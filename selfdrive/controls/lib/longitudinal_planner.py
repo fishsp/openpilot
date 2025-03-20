@@ -29,6 +29,10 @@ A_CRUISE_MIN = -1.2
 A_CRUISE_MAX_VALS = [1.2, 1.2, 0.8, 0.6] #0km/h 36km/h 90km/h 144km/h
 A_CRUISE_MAX_BP = [0., 10.0, 25., 40.] #0km/h 36km/h 90km/h 144km/h
 
+_DP_CRUISE_MAX_V_ECO =   [2.0, 2.0, 2.0, 1.50, 0.92, .54,  .43,  .32,  .088]
+_DP_CRUISE_MAX_BP =      [0.,  1.,  6.,  8.,   11.,  20.,  25.,  30.,  55.]
+#                  km/h   0    3.6  22   29    40    72    90    108   198
+
 # Lookup table for turns
 _A_TOTAL_MAX_V = [1.7, 3.2]
 _A_TOTAL_MAX_BP = [20., 40.]
@@ -40,6 +44,8 @@ EventName = car.CarEvent.EventName
 def get_max_accel(v_ego):
   return interp(v_ego, A_CRUISE_MAX_BP, A_CRUISE_MAX_VALS)
 
+def get_eco_max_accel(v_ego):
+  return interp(v_ego, _DP_CRUISE_MAX_BP, _DP_CRUISE_MAX_V_ECO)
 
 def limit_accel_in_turns(v_ego, angle_steers, a_target, CP):
   """
