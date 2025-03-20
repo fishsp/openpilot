@@ -28,11 +28,10 @@ class TiciFanController(BaseFanController):
       self.controller.reset()
 
     error = 70 - cur_temp
-    fan_pwr_out = -int(self.controller.update(
-                      error=error,
-                      feedforward=interp(cur_temp, [60.0, 100.0], [0, -100])
-                    ))
+    fan_pwr_out = int(interp(cur_temp, [60.0, 80.0], [0, 85]))
 
+    # 确保风扇功率在 0 到 65 之间
+    fan_pwr_out = max(0, min(85, fan_pwr_out))
     self.last_ignition = ignition
     return fan_pwr_out
 
