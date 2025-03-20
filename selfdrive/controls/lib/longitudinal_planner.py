@@ -22,7 +22,6 @@ from openpilot.selfdrive.controls.lib.turn_speed_controller import TurnSpeedCont
 from openpilot.selfdrive.controls.lib.dynamic_experimental_controller import DynamicExperimentalController
 from openpilot.selfdrive.controls.lib.events import Events
 from openpilot.common.swaglog import cloudlog
-from openpilot.selfdrive.controls.lib.sunnypilot.accel_controller import AccelController, AccelerationPersonality
 
 LON_MPC_STEP = 0.2  # first step is 0.2s
 A_CRUISE_MIN = -1.2
@@ -156,20 +155,6 @@ class LongitudinalPlanner:
     #else:
     #  accel_limits = [ACCEL_MIN, ACCEL_MAX]
     #  accel_limits_turns = [ACCEL_MIN, ACCEL_MAX]
-
-    # override accel using Accel Controller
-    #if self.accel_controller.is_enabled(accel_personality=AccelerationPersonality.eco):
-    if self.accel_controller.is_enabled(accel_personality=AccelerationPersonality.stock): #
-      # get min, max from accel controller
-      min_limit, max_limit = self.accel_controller.get_accel_limits(v_ego, accel_limits)
-      if self.mpc.mode == 'acc':
-        # VOACC car, just give it max min (-1.2) so I can brake harder
-        accel_limits = [A_CRUISE_MIN, max_limit] if self.CP.radarUnavailable else [min_limit, max_limit]
-        # recalculate limit turn according to the new min, max
-        accel_limits_turns = limit_accel_in_turns(v_ego, sm['carState'].steeringAngleDeg, accel_limits, self.CP)
-      else:
-        accel_limits = [A_CRUISE_MIN, max_limit]
-        accel_limits_turns = limit_accel_in_turns(v_ego, sm['carState'].steeringAngleDeg, accel_limits, self.CP)
 
     if reset_state:
       self.v_desired_filter.x = v_ego
