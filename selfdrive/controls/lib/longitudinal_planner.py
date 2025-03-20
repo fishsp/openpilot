@@ -26,6 +26,9 @@ from openpilot.selfdrive.controls.lib.sunnypilot.accel_controller import AccelCo
 
 LON_MPC_STEP = 0.2  # first step is 0.2s
 A_CRUISE_MIN = -1.2
+#A_CRUISE_MAX_VALS = [1.6, 1.2, 0.8, 0.6]
+#A_CRUISE_MAX_BP =   [0., 10.0, 25., 40.]
+#            km/h    0    36    90   144
 A_CRUISE_MAX_VALS = [1.2, 1.2,  1.2,  1.2,  1.0,   0.9,   0.8,   0.7,   0.5,  .43,  .32,  .088]
 A_CRUISE_MAX_BP =   [0.,  2.78, 5.56, 8.33, 11.11, 13.33, 15.55, 17.78, 22.22, 25.,  30.,  55.]
 #            km/h    0    10    20    30    40     50     60     70     80     90    108   198
