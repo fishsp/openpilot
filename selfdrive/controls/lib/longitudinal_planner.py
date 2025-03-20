@@ -93,12 +93,12 @@ class LongitudinalPlanner:
     self.events = Events()
     self.turn_speed_controller = TurnSpeedController()
     self.dynamic_experimental_controller = DynamicExperimentalController()
-    self.manual_parking_brake = self.param_s.get_bool("SubaruManualParkingBrakeSng")
-    self.stock_long_toyota = self.param_s.get_bool("StockLongToyota")
+    self.manual_parking_brake = self.params.get_bool("SubaruManualParkingBrakeSng")
+    self.stock_long_toyota = self.params.get_bool("StockLongToyota")
 
   def read_param(self):
-    self.manual_parking_brake = self.param_s.get_bool("SubaruManualParkingBrakeSng")
-    self.stock_long_toyota = self.param_s.get_bool("StockLongToyota")
+    self.manual_parking_brake = self.params.get_bool("SubaruManualParkingBrakeSng")
+    self.stock_long_toyota = self.params.get_bool("StockLongToyota")
     try:
       self.dynamic_experimental_controller.set_enabled(self.params.get_bool("DynamicExperimentalControl"))
     except AttributeError:
