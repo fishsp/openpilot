@@ -12,13 +12,14 @@ class Logger:
 
     def _initialize_logger(self):
         """创建日志文件或在日期变更时重新创建"""
-        os.makedirs(self.log_dir, exist_ok=True)  # 确保日志目录存在
+        os.makedirs(self.log_dir, exist_ok=True)
         date_str = time.strftime("%Y-%m-%d")
+        new_log_file = os.path.join(self.log_dir, f"debug_{date_str}.log")
 
-        # 如果是首次创建，或者日期已经变化，则重新初始化
-        if self.logger is None or self.current_date != date_str:
+        # 如果是首次创建，或者日期变化，或者日志文件被删除，则重新初始化
+        if self.logger is None or self.current_date != date_str or not os.path.exists(new_log_file):
             self.current_date = date_str
-            self.log_file = os.path.join(self.log_dir, f"debug_{date_str}.log")
+            self.log_file = new_log_file
 
             # 清理旧的 Logger
             if self.logger:
