@@ -118,6 +118,7 @@ class CarController(CarControllerBase):
     self.hkg_can_smooth_stop = self.param_s.get_bool("HkgSmoothStop")
     self.lead_distance = 0
     self.manual_parking_brake = self.param_s.get_bool("SubaruManualParkingBrakeSng")
+    self.accel_eco = self.param_s.get_bool("SubaruManualParkingBrakeSng")
     self.stock_long_toyota = self.param_s.get_bool("StockLongToyota")
 
     self.jerk = 0.0
@@ -166,6 +167,7 @@ class CarController(CarControllerBase):
 
     if self.frame % 200 == 0:
       self.manual_parking_brake = self.param_s.get_bool("SubaruManualParkingBrakeSng")
+      self.accel_eco = self.param_s.get_bool("SubaruManualParkingBrakeSng")
       self.stock_long_toyota = self.param_s.get_bool("StockLongToyota")
     
     actuators = CC.actuators
@@ -247,7 +249,7 @@ class CarController(CarControllerBase):
     if self.CP.openpilotLongitudinalControl:
       speed = CS.out.vEgoRaw  # 当前车速（m/s）
       # 定义车速区间对应的 jerk 和 accel 限制值
-      pid_speed_limits = {
+      accel_limits_tb = {
         0: {"jerk": 0.4, "accel": 0.8},  # 0 km/h
         0.56: {"jerk": 0.5, "accel": 1.0},  # 2 km/h
         1.11: {"jerk": 0.6, "accel": 1.2},  # 4 km/h
@@ -269,7 +271,7 @@ class CarController(CarControllerBase):
         18.89: {"jerk": 0.2, "accel": 0.5},  # 75 km/h
         22.22: {"jerk": 0.2, "accel": 0.5},  # 80 km/h
       }
-      pid_speed2_limits = {
+      eco_accel_limits_tb = {
         0: {"jerk": 0.3, "accel": 0.8},  # 0 km/h
         0.56: {"jerk": 0.3, "accel": 0.9},  # 2 km/h
         1.11: {"jerk": 0.3, "accel": 1.0},  # 4 km/h
@@ -293,10 +295,10 @@ class CarController(CarControllerBase):
       }
 
       #根据斯巴鲁驻车选项加速度表
-      if not self.manual_parking_brake:
-          speed_limits = pid_speed_limits
+      if not self.accel_eco:
+          speed_limits = accel_limits_tb
       else:
-          speed_limits = pid_speed2_limits
+          speed_limits = eco_accel_limits_tb
 
       # 纵向控制日志计时
       if speed < 0.05: # 速度小于0.05m/s时认为停车了
