@@ -264,15 +264,15 @@ class CarController(CarControllerBase):
         0.56: {"jerk": 0.5, "accel": 1.0},  # 2 km/h
         1.11: {"jerk": 0.6, "accel": 1.2},  # 4 km/h
         1.67: {"jerk": 0.8, "accel": 1.5},  # 6 km/h
-        2.22: {"jerk": 1.2, "accel": 1.8},  # 8 km/h
-        2.78: {"jerk": 1.6, "accel": 2.0},  # 10 km/h
-        4.17: {"jerk": 1.8, "accel": 2.0},  # 15 km/h
-        5.56: {"jerk": 2.0, "accel": 2.0},  # 20 km/h
-        6.94: {"jerk": 2.0, "accel": 2.0},  # 25 km/h
-        8.33: {"jerk": 2.0, "accel": 2.0},  # 30 km/h
-        10.0: {"jerk": 2.0, "accel": 1.8},  # 35 km/h
-        11.11: {"jerk": 1.5, "accel": 1.6},  # 40 km/h
-        12.22: {"jerk": 1.0, "accel": 1.4},  # 45 km/h
+        2.22: {"jerk": 0.8, "accel": 1.5},  # 8 km/h
+        2.78: {"jerk": 0.8, "accel": 1.5},  # 10 km/h
+        4.17: {"jerk": 0.8, "accel": 1.6},  # 15 km/h
+        5.56: {"jerk": 0.9, "accel": 1.6},  # 20 km/h
+        6.94: {"jerk": 1.0, "accel": 1.6},  # 25 km/h
+        8.33: {"jerk": 1.0, "accel": 1.6},  # 30 km/h
+        10.0: {"jerk": 1.0, "accel": 1.5},  # 35 km/h
+        11.11: {"jerk": 0.9, "accel": 1.5},  # 40 km/h
+        12.22: {"jerk": 0.8, "accel": 1.4},  # 45 km/h
         13.33: {"jerk": 0.6, "accel": 1.2},  # 50 km/h
         14.44: {"jerk": 0.4, "accel": 1.0},  # 55 km/h
         15.55: {"jerk": 0.3, "accel": 0.8},  # 60 km/h
@@ -304,12 +304,6 @@ class CarController(CarControllerBase):
         22.22: {"jerk": 0.2, "accel": 0.5},  # 80 km/h
       }
 
-      #根据斯巴鲁驻车选项加速度表
-      #if not self.manual_parking_brake:
-      #    speed_limits = pid_speed_limits
-      #else:
-      #    speed_limits = pid_speed2_limits
-
       # 纵向控制日志计时
       if speed < 0.05: # 速度小于0.05m/s时认为停车了
         if self.long_log:
@@ -334,14 +328,14 @@ class CarController(CarControllerBase):
         self.long_log = False
 
       # 默认的加速度限制和jerk限制
-      accel_limit = CarControllerParams.ACCEL_MAX
-      jerk_limit = 3.0
       stock_accel_limit = CarControllerParams.ACCEL_MAX
-      stock_jerk_limit = 3.0
+      stock_jerk_limit = 1.0
       eco_accel_limit = CarControllerParams.ACCEL_MAX/2
-      eco_jerk_limit = 1.5
+      eco_jerk_limit = 1.0
+      accel_limit = stock_accel_limit
+      jerk_limit = stock_jerk_limit
 
-      # 根据当前速度决定jerk和accel的限制值
+      # 分别查表得到stock和eco的jerk以及accel限制值
       if speed <= 0:  # 车速小于 0 km/h
         stock_jerk_limit = accel_limits_tb[0]["jerk"]  # 最大 jerk
         stock_accel_limit = accel_limits_tb[0]["accel"]  # 最大加速度
@@ -361,18 +355,20 @@ class CarController(CarControllerBase):
         eco_jerk_limit, eco_accel_limit = self.get_jerk_accel(speed, eco_accel_limits_tb)  # 根据速度查表并插值
 
       #根据模式选择加速度限制
-      if not self.accel_eco:
-        if not self.hkg_custom_long_tuning:
-          accel_limit = stock_accel_limit
-        else:
-          accel_limit = car_get_max_accel(speed)
-        jerk_limit = stock_jerk_limit
-      else:
-        if not self.hkg_custom_long_tuning:
+      if self.accel_eco:
+        if self.hkg_custom_long_tuning:
           accel_limit = eco_accel_limit
+          jerk_limit = eco_jerk_limit
         else:
-          accel_limit = car_get_eco_max_accel(speed)
-        jerk_limit = eco_jerk_limit
+          accel_limit = get_max_accel(speed, True)
+          jerk_limit = get_max_jerk(speed, True)
+      else:
+        if self.hkg_custom_long_tuning:
+          accel_limit = stock_accel_limit
+          jerk_limit = stock_jerk_limit
+        else:
+          accel_limit = get_max_accel(speed, False)
+          jerk_limit = get_max_jerk(speed, False)
 
       # TEST
       if self.cruiseState_last != CS.out.cruiseState.enabled:
@@ -413,8 +409,8 @@ class CarController(CarControllerBase):
           self.accel_ramp_time += DT_CTRL
           self.accel_ramp_time = min(self.accel_ramp_time, accel_ramp_time_max)  # 确保不会超过accel_ramp_time_max
           self.accel_limit = interp(self.accel_ramp_time, [0, accel_ramp_time_max], [self.accel_start, max(self.accel_start, accel_limit)])
-          self.jerk_limit = interp(self.accel_ramp_time, [0, accel_ramp_time_max], [0.2, max(0.2, eco_jerk_limit)]) # 只使用eco的eco_jerk_limit
-          self.jerk = self.jerk_limit # 赋值给cal_jerk函数计算的结果值self.jerk，目的是为了平滑
+          self.jerk_limit = interp(self.accel_ramp_time, [0, accel_ramp_time_max], [0.2, max(0.2, jerk_limit)])
+          self.jerk = self.jerk_limit # 赋值给self.jerk，目的是为了防止平滑结束后cal_jerk函数计算结果self.jerk发生突变
 
           if self.frame % 10 == 0:
             if self.log_enable:
@@ -435,7 +431,7 @@ class CarController(CarControllerBase):
       self.jerk_limit_org = jerk_limit
       self.accel_limit_org = accel_limit
 
-      if (actuators.accel >= 0) and (not self.hkg_custom_long_tuning or cruise_ramp):  # 加速度大于指定值时 or 没有开启新纵向开关(即HKG平滑停车开关)
+      if (actuators.accel >= 0) and (self.hkg_custom_long_tuning or cruise_ramp):  # 加速度大于指定值时 并且 (开启了用户限制(即HKG平滑停车开关) 或 在平滑巡航开启)
         accel = clip(actuators.accel, CarControllerParams.ACCEL_MIN, self.accel_limit) # 使用 clip 限制加速度，确保加速度在指定范围内
         self.clip_accel = True
 
