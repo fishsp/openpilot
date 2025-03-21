@@ -78,6 +78,7 @@ class CarController(CarControllerBase):
     self.accel_limit_org = 0.0
     self.normal_log_num = 0
     self.pcmCruiseSpeed_last = False
+    self.log_enable = False
 
     sub_services = ['longitudinalPlanSP']
     if CP.openpilotLongitudinalControl:
@@ -300,21 +301,24 @@ class CarController(CarControllerBase):
       # 纵向控制日志计时
       if speed < 0.05: # 速度小于0.05m/s时认为停车了
         if self.long_log:
-          logger.log("long log end", aEgo=CS.out.aEgo, speed=speed)
-          logger.log("=======================================================")
+          if self.log_enable:
+            logger.log("long log end", aEgo=CS.out.aEgo, speed=speed)
+            logger.log("=======================================================")
         self.long_control_time = 0
         self.long_log = False
       elif self.long_control_time < 15.0: # 纵向控制的前15秒快速记录日志
         self.long_control_time += DT_CTRL
         if not self.long_log:
-          logger.log("=======================================================")
-          logger.log("long log start", aEgo=CS.out.aEgo, speed=speed)
+          if self.log_enable:
+            logger.log("=======================================================")
+            logger.log("long log start", aEgo=CS.out.aEgo, speed=speed)
           self.normal_log_num = 0
         self.long_log = True
       else:
         if self.long_log:
-          logger.log("long log end", aEgo=CS.out.aEgo, speed=speed)
-          logger.log("=======================================================")
+          if self.log_enable:
+            logger.log("long log end", aEgo=CS.out.aEgo, speed=speed)
+            logger.log("=======================================================")
         self.long_log = False
 
       # 默认的加速度限制和jerk限制
@@ -357,8 +361,10 @@ class CarController(CarControllerBase):
         self.accel_start = min(CS.out.aEgo, accel_limit)  # 在CS.out.aEgo, accel_limit中选小的作为初始加速度限制
         if self.accel_start < 0.1:
           self.accel_start = 0.1
-        logger.log("cruise start", speed=speed, aEgo=CS.out.aEgo, accel_start=self.accel_start,
-                   accel_limit=accel_limit, jerk_limit=jerk_limit)
+        if self.log_enable:
+          if self.log_enable:
+            logger.log("cruise start", speed=speed, aEgo=CS.out.aEgo, accel_start=self.accel_start,
+                       accel_limit=accel_limit, jerk_limit=jerk_limit)
 
       if CS.out.cruiseState.enabled and self.stock_long_toyota:  # 打开了丰田纵向开关才允许平滑
         accel_ramp_time_max = 3.0
@@ -371,8 +377,9 @@ class CarController(CarControllerBase):
           self.jerk_limit = interp(self.accel_ramp_time, [0, accel_ramp_time_max], [0.2, max(0.2, jerk_limit)])
 
           if self.frame % 10 == 0:
-            logger.log("cruise ramp", time=self.accel_ramp_time, speed=speed, aEgo=CS.out.aEgo, self_accel_limit=self.accel_limit,
-                       self_jerk_limit=self.jerk_limit, accel_limit=accel_limit, jerk_limit=jerk_limit)
+            if self.log_enable:
+              logger.log("cruise ramp", time=self.accel_ramp_time, speed=speed, aEgo=CS.out.aEgo, self_accel_limit=self.accel_limit,
+                         self_jerk_limit=self.jerk_limit, accel_limit=accel_limit, jerk_limit=jerk_limit)
         else:
           self.accel_limit = accel_limit  # 3秒后直接使用PID加速度
           self.jerk_limit = jerk_limit  # 3秒后直接使用jerk
@@ -468,7 +475,7 @@ class CarController(CarControllerBase):
         use_fca = self.CP.flags & HyundaiFlags.USE_FCA.value
         self.make_accel(CS, actuators)
 
-        if CS.out.cruiseState.enabled:
+        if CS.out.cruiseState.enabled and self.log_enable:
           vego_kmh = CS.out.vEgo * 3.6
           if self.long_log:
             if self.frame % 10 == 0:
