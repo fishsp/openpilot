@@ -78,7 +78,7 @@ class CarController(CarControllerBase):
     self.accel_limit_org = 0.0
     self.normal_log_num = 0
     self.pcmCruiseSpeed_last = False
-    self.log_enable = False
+    self.log_enable = True
 
     sub_services = ['longitudinalPlanSP']
     if CP.openpilotLongitudinalControl:
