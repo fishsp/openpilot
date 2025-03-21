@@ -361,10 +361,16 @@ class CarController(CarControllerBase):
 
       #根据模式选择加速度限制
       if not self.accel_eco:
-        accel_limit = stock_accel_limit
+        if not self.hkg_custom_long_tuning:
+          accel_limit = stock_accel_limit
+        else:
+          accel_limit = car_get_max_accel(speed)
         jerk_limit = stock_jerk_limit
       else:
-        accel_limit = eco_accel_limit
+        if not self.hkg_custom_long_tuning:
+          accel_limit = eco_accel_limit
+        else:
+          accel_limit = car_get_eco_max_accel(speed)
         jerk_limit = eco_jerk_limit
 
       # TEST
@@ -404,10 +410,10 @@ class CarController(CarControllerBase):
         if self.accel_ramp_time < accel_ramp_time_max:
           cruise_ramp = True
           self.accel_ramp_time += DT_CTRL
-          self.accel_ramp_time = min(self.accel_ramp_time, accel_ramp_time_max)  # 确保不会超过 3.0
-          self.accel_limit = interp(self.accel_ramp_time, [0, accel_ramp_time_max], [self.accel_start, max(self.accel_start, eco_accel_limit)])
-          self.jerk_limit = interp(self.accel_ramp_time, [0, accel_ramp_time_max], [0.2, max(0.2, eco_jerk_limit)])
-          self.jerk = self.jerk_limit
+          self.accel_ramp_time = min(self.accel_ramp_time, accel_ramp_time_max)  # 确保不会超过accel_ramp_time_max
+          self.accel_limit = interp(self.accel_ramp_time, [0, accel_ramp_time_max], [self.accel_start, max(self.accel_start, accel_limit)])
+          self.jerk_limit = interp(self.accel_ramp_time, [0, accel_ramp_time_max], [0.2, max(0.2, eco_jerk_limit)]) # 只使用eco的eco_jerk_limit
+          self.jerk = self.jerk_limit # 赋值给cal_jerk函数计算的结果值self.jerk，目的是为了平滑
 
           if self.frame % 10 == 0:
             if self.log_enable:
