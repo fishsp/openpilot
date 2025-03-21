@@ -346,6 +346,7 @@ class CarController(CarControllerBase):
           print("pcmCruiseSpeed True")
         else:
           print("pcmCruiseSpeed False")
+      self.pcmCruiseSpeed_last = self.CP.pcmCruiseSpeed
       # TEST
 
       # 非巡航状态则重置self.accel_ramp_time
