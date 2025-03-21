@@ -116,9 +116,10 @@ class CarController(CarControllerBase):
     self.m_tsc = 0
     self.steady_speed = 0
     self.lead_distance = 0
+    self.hkg_can_smooth_stop = self.param_s.get_bool("HkgSmoothStop")
     self.accel_eco = self.param_s.get_bool("SubaruManualParkingBrakeSng") #ECO加速模式
     self.cruise_smooth = self.param_s.get_bool("StockLongToyota") #巡航平滑
-    self.custom_accel_limit = self.param_s.get_bool("HkgSmoothStop") #用户限制加速度
+    self.custom_accel_limit = self.param_s.get_bool("LkasToggle") #用户限制加速度
 
     self.jerk = 0.0
     self.jerk_l = 0.0
@@ -167,8 +168,9 @@ class CarController(CarControllerBase):
       self.v_cruise_min = HYUNDAI_V_CRUISE_MIN[self.is_metric] * (CV.KPH_TO_MPH if not self.is_metric else 1)
 
     if self.frame % 200 == 0:
-      self.accel_eco = self.param_s.get_bool("SubaruManualParkingBrakeSng")
-      self.cruise_smooth = self.param_s.get_bool("StockLongToyota")
+      self.accel_eco = self.param_s.get_bool("SubaruManualParkingBrakeSng")  # ECO加速模式
+      self.cruise_smooth = self.param_s.get_bool("StockLongToyota")  # 巡航平滑
+      self.custom_accel_limit = self.param_s.get_bool("LkasToggle")  # 用户限制加速度
     
     actuators = CC.actuators
     hud_control = CC.hudControl
@@ -499,6 +501,9 @@ class CarController(CarControllerBase):
         self.lead_distance = self.calculate_lead_distance(hud_control)
 
       if self.frame % 2 == 0 and self.CP.openpilotLongitudinalControl:
+        if self.hkg_can_smooth_stop:
+          stopping = stopping and CS.out.vEgoRaw < 0.05
+
         # TODO: unclear if this is needed
         jerk = 3.0 if actuators.longControlState == LongCtrlState.pid else 1.0
         use_fca = self.CP.flags & HyundaiFlags.USE_FCA.value
