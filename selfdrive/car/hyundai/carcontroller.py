@@ -396,8 +396,7 @@ class CarController(CarControllerBase):
           cruise_ramp = True
           self.accel_ramp_time += DT_CTRL
           self.accel_ramp_time = min(self.accel_ramp_time, accel_ramp_time_max)  # 确保不会超过 3.0
-          self.accel_limit = interp(self.accel_ramp_time, [0, accel_ramp_time_max],
-                                    [self.accel_start, max(self.accel_start, stock_accel_limit)])
+          self.accel_limit = interp(self.accel_ramp_time, [0, accel_ramp_time_max], [self.accel_start, max(self.accel_start, eco_accel_limit)])
           self.jerk_limit = interp(self.accel_ramp_time, [0, accel_ramp_time_max], [0.2, max(0.2, eco_jerk_limit)])
           self.jerk = self.jerk_limit
 
