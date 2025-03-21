@@ -207,6 +207,15 @@ def create_new_acc_commands(packer, enabled, accel_raw, accel_val, lower_jerk, u
                         CS, escc, CP, lead_distance, cb_lower, cb_upper):
   commands = []
 
+  if accel_raw > 12. or accel_raw < -12.:
+    return
+  if accel_val > 12. or accel_val < -12.:
+    return
+  if lower_jerk > 12. or lower_jerk < -12.:
+    return
+  if upper_jerk > 12. or upper_jerk < -12.:
+    return
+
   scc11_values = {
     "MainMode_ACC": 1 if CS.mainEnabled else 0,
     "TauGapSet": hud_control.leadDistanceBars,
