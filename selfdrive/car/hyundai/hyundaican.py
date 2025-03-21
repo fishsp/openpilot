@@ -1,5 +1,6 @@
 import crcmod
 from openpilot.selfdrive.car.hyundai.values import CAR, HyundaiFlags
+from openpilot.common.logger import logger
 
 hyundai_checksum = crcmod.mkCrcFun(0x11D, initCrc=0xFD, rev=False, xorOut=0xdf)
 
@@ -208,12 +209,16 @@ def create_new_acc_commands(packer, enabled, accel_raw, accel_val, lower_jerk, u
   commands = []
 
   if accel_raw > 12. or accel_raw < -12.:
+    logger.log("ERROR: ", accel_raw=accel_raw)
     return
   if accel_val > 12. or accel_val < -12.:
+    logger.log("ERROR: ", accel_val=accel_val)
     return
   if lower_jerk > 12. or lower_jerk < -12.:
+    logger.log("ERROR: ", lower_jerk=lower_jerk)
     return
   if upper_jerk > 12. or upper_jerk < -12.:
+    logger.log("ERROR: ", upper_jerk=upper_jerk)
     return
 
   scc11_values = {
