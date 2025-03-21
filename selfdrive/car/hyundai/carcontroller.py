@@ -132,6 +132,9 @@ class CarController(CarControllerBase):
     self.accel_val = 0
     self.accel_last_jerk = 0
 
+    self.lkas_toggle = self.param_s.get_bool("LkasToggle")
+    logger.log("lkas", LkasToggle=self.lkas_toggle)
+
   def calculate_lead_distance(self, hud_control: car.CarControl.HUDControl) -> float:
     lead_one = self.sm["radarState"].leadOne
     lead_two = self.sm["radarState"].leadTwo
