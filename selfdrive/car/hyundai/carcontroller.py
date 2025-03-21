@@ -356,7 +356,7 @@ class CarController(CarControllerBase):
                                     [self.accel_start, max(self.accel_start, accel_limit)])
           self.jerk_limit = interp(self.accel_ramp_time, [0, accel_ramp_time_max], [0.2, max(0.2, jerk_limit)])
 
-          if self.frame % 2 == 0:
+          if self.frame % 10 == 0:
             logger.log("cruise ramp", time=self.accel_ramp_time, speed=speed, aEgo=CS.out.aEgo, self_accel_limit=self.accel_limit,
                        self_jerk_limit=self.jerk_limit, accel_limit=accel_limit, jerk_limit=jerk_limit)
         else:
@@ -457,10 +457,12 @@ class CarController(CarControllerBase):
         if CS.out.cruiseState.enabled:
           vego_kmh = CS.out.vEgo * 3.6
           if self.long_log:
-            logger.log("fast long log", speed=vego_kmh, accel=accel, aEgo=CS.out.aEgo, actuators_accel=actuators.accel,
-                       accel_raw=self.accel_raw, accel_val=self.accel_val, accel_limit=self.accel_limit_org,
-                       self_accel_limit=self.accel_limit, jerk_limit=self.jerk_limit_org,
-                       self_jerk_limit=self.jerk_limit, jerk_l=self.jerk_l, jerk_u=self.jerk_u)
+            if self.frame % 10 == 0:
+              logger.log("fast long log", speed=vego_kmh, accel=accel, aEgo=CS.out.aEgo,
+                         actuators_accel=actuators.accel,
+                         accel_raw=self.accel_raw, accel_val=self.accel_val, accel_limit=self.accel_limit_org,
+                         self_accel_limit=self.accel_limit, jerk_limit=self.jerk_limit_org,
+                         self_jerk_limit=self.jerk_limit, jerk_l=self.jerk_l, jerk_u=self.jerk_u)
           elif (self.frame % 200 == 0) and (self.normal_log_num < 30) and (
                   actuators.longControlState != LongCtrlState.off):  # 平常每2秒记录一次日志(共记录300条，10分钟)
             self.normal_log_num += 1
