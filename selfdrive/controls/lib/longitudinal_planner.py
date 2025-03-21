@@ -141,8 +141,8 @@ class LongitudinalPlanner:
     # No change cost when user is controlling the speed, or when standstill
     prev_accel_constraint = not (reset_state or sm['carState'].standstill)
 
-    # 使用HKG平滑停车和斯巴鲁驻车来选择ECO加速表
-    if self.stock_long_toyota and self.manual_parking_brake:
+    # 使用斯巴鲁驻车来选择ECO加速表
+    if self.manual_parking_brake:
       accel_limits = [A_CRUISE_MIN, get_eco_max_accel(v_ego)]
       accel_limits_turns = limit_accel_in_turns(v_ego, sm['carState'].steeringAngleDeg, accel_limits, self.CP)
     else:
