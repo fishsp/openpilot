@@ -368,8 +368,9 @@ class CarController(CarControllerBase):
                        accel_limit=accel_limit, jerk_limit=jerk_limit)
 
       if CS.out.cruiseState.enabled and self.stock_long_toyota:  # 打开了丰田纵向开关才允许平滑
-        accel_ramp_time_max = 3.0
+        accel_ramp_time_max = 5.0
         if self.accel_ramp_time < accel_ramp_time_max:
+          self.jerk = 0
           cruise_ramp = True
           self.accel_ramp_time += DT_CTRL
           self.accel_ramp_time = min(self.accel_ramp_time, accel_ramp_time_max)  # 确保不会超过 3.0
@@ -381,6 +382,9 @@ class CarController(CarControllerBase):
             if self.log_enable:
               logger.log("cruise ramp", time=self.accel_ramp_time, speed=speed, aEgo=CS.out.aEgo, self_accel_limit=self.accel_limit,
                          self_jerk_limit=self.jerk_limit, accel_limit=accel_limit, jerk_limit=jerk_limit)
+
+          if self.accel_ramp_time >= accel_ramp_time_max:
+            logger.log("cruise ramp end")
         else:
           self.accel_limit = accel_limit  # 3秒后直接使用PID加速度
           self.jerk_limit = jerk_limit  # 3秒后直接使用jerk
