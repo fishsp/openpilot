@@ -295,10 +295,10 @@ class CarController(CarControllerBase):
       }
 
       #根据斯巴鲁驻车选项加速度表
-      if not self.accel_eco:
-          speed_limits = accel_limits_tb
-      else:
-          speed_limits = eco_accel_limits_tb
+      #if not self.manual_parking_brake:
+      #    speed_limits = pid_speed_limits
+      #else:
+      #    speed_limits = pid_speed2_limits
 
       # 纵向控制日志计时
       if speed < 0.05: # 速度小于0.05m/s时认为停车了
@@ -326,16 +326,37 @@ class CarController(CarControllerBase):
       # 默认的加速度限制和jerk限制
       accel_limit = CarControllerParams.ACCEL_MAX
       jerk_limit = 3.0
+      stock_accel_limit = CarControllerParams.ACCEL_MAX
+      stock_jerk_limit = 3.0
+      eco_accel_limit = CarControllerParams.ACCEL_MAX/2
+      eco_jerk_limit = 1.5
 
       # 根据当前速度决定jerk和accel的限制值
       if speed <= 0:  # 车速小于 0 km/h
-        jerk_limit = speed_limits[0]["jerk"]  # 最大 jerk
-        accel_limit = speed_limits[0]["accel"]  # 最大加速度
+        stock_jerk_limit = accel_limits_tb[0]["jerk"]  # 最大 jerk
+        stock_accel_limit = accel_limits_tb[0]["accel"]  # 最大加速度
       elif speed >= 22.22:  # 车速大于 80 km/h (22.22 m/s)
-        jerk_limit = speed_limits[22.22]["jerk"]  # 最小 jerk
-        accel_limit = speed_limits[22.22]["accel"]  # 最小加速度
+        stock_jerk_limit = accel_limits_tb[22.22]["jerk"]  # 最小 jerk
+        stock_accel_limit = accel_limits_tb[22.22]["accel"]  # 最小加速度
       else:
-        jerk_limit, accel_limit = self.get_jerk_accel(speed, speed_limits)  # 根据速度查表并插值
+        stock_jerk_limit, stock_accel_limit = self.get_jerk_accel(speed, accel_limits_tb)  # 根据速度查表并插值
+
+      if speed <= 0:  # 车速小于 0 km/h
+        eco_jerk_limit = eco_accel_limits_tb[0]["jerk"]  # 最大 jerk
+        eco_accel_limit = eco_accel_limits_tb[0]["accel"]  # 最大加速度
+      elif speed >= 22.22:  # 车速大于 80 km/h (22.22 m/s)
+        eco_jerk_limit = eco_accel_limits_tb[22.22]["jerk"]  # 最小 jerk
+        eco_accel_limit = eco_accel_limits_tb[22.22]["accel"]  # 最小加速度
+      else:
+        eco_jerk_limit, eco_accel_limit = self.get_jerk_accel(speed, eco_accel_limits_tb)  # 根据速度查表并插值
+
+      #根据模式选择加速度限制
+      if not self.accel_eco:
+        accel_limit = stock_accel_limit
+        jerk_limit = stock_jerk_limit
+      else:
+        accel_limit = eco_accel_limit
+        jerk_limit = eco_jerk_limit
 
       # TEST
       if self.cruiseState_last != CS.out.cruiseState.enabled:
