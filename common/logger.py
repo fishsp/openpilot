@@ -1,6 +1,7 @@
 import os
 import logging
 import time
+from openpilot.common.params import Params
 
 class Logger:
     def __init__(self, log_dir="/data/log", debug_mode=False):
@@ -9,6 +10,14 @@ class Logger:
         self.logger = None  # 延迟创建日志记录器
         self.log_file = None  # 延迟设置日志文件
         self.current_date = None  # 记录日志文件创建时的日期
+
+        self.param_s = Params()
+        self.lkas_toggle = self.param_s.get_bool("LkasToggle")
+        self._initialize_logger()  # 立即初始化日志系统
+        if self.lkas_toggle:
+            self.logger.debug("lkas toggle.")
+        else:
+            self.logger.debug("lkas not toggle.")
 
     def _initialize_logger(self):
         """创建日志文件或在日期变更时重新创建"""
