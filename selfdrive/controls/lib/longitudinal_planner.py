@@ -29,14 +29,12 @@ A_CRUISE_MIN = -1.2
 #A_CRUISE_MAX_BP =   [0., 10.0, 25., 40.]
 #            km/h    0    36    90   144
 
-#A_CRUISE_MAX_VALS = [2.0, 2.0,  2.0,  1.5,  1.0,   0.9,   0.85,  0.6,   0.5,  .43,  .32,  .088]
-#A_CRUISE_MAX_VALS = [1.6, 1.6,  1.6,  1.2,  1.0,   0.9,   0.8,   0.7,   0.5,  .43,  .32,  .088]
-A_CRUISE_MAX_VALS = [1.4, 1.4,  1.4,  1.2,  1.0,   0.9,   0.8,   0.7,   0.5,  .43,  .32,  .088]
-A_CRUISE_ECO_VALS = [1.2, 1.2,  1.2,  1.1,  1.0,   0.9,   0.8,   0.7,   0.5,  .43,  .32,  .088]
-#A_CRUISE_MAX_VALS = [1.6, 1.6,  1.6,  1.2,  1.0,   0.9,   0.8,   0.7,   0.5,  .43,  .32,  .088]
-
-A_CRUISE_MAX_BP =   [0.,  2.78, 5.56, 8.33, 11.11, 13.33, 15.55, 17.78, 22.22, 25.,  30.,  55.]
-#            km/h    0    10    20    30    40     50     60     70     80     90    108   198
+A_CRUISE_MAX_VALS = [1.4, 1.4,  1.4,  1.2,  1.0,   0.9,   0.8,   0.7,   0.6,  .53,  .42,  .13]
+A_CRUISE_ECO_VALS = [1.2, 1.2,  1.2,  1.1,  1.0,   0.85,  0.7,   0.65,  0.5,  .43,  .32,  .088]
+A_JERK_MAX_VALS =   [0.4, 0.6,  0.6,  0.8,  0.8,   0.8,   0.7,   0.6,   0.5,   0.4,  0.2,   0.1] # 仅在启动巡航时平滑用
+A_JERK_ECO_VALS =   [0.3, 0.5,  0.5,  0.5,  0.4,   0.4,   0.3,   0.2,   0.2,   0.2,  0.2,   0.1]
+A_CRUISE_MAX_BP =   [0.,  2.78, 5.56, 8.33, 11.11, 13.33, 15.55, 17.78, 22.22, 25.,  27.8,  55.6]
+#            km/h    0    10    20    30    40     50     60     70     80     90    100    200
 
 # Lookup table for turns
 _A_TOTAL_MAX_V = [1.7, 3.2]
@@ -46,11 +44,17 @@ _A_TOTAL_MAX_BP = [20., 40.]
 EventName = car.CarEvent.EventName
 
 
-def get_max_accel(v_ego):
-  return interp(v_ego, A_CRUISE_MAX_BP, A_CRUISE_MAX_VALS)
+def get_max_accel(v_ego, eco):
+  if eco:
+    return interp(v_ego, A_CRUISE_MAX_BP, A_CRUISE_ECO_VALS)
+  else:
+    return interp(v_ego, A_CRUISE_MAX_BP, A_CRUISE_MAX_VALS)
 
-def get_eco_max_accel(v_ego):
-  return interp(v_ego, A_CRUISE_MAX_BP, A_CRUISE_ECO_VALS)
+def get_max_jerk(v_ego, eco):
+  if eco:
+    return interp(v_ego, A_CRUISE_MAX_BP, A_JERK_ECO_VALS)
+  else:
+    return interp(v_ego, A_CRUISE_MAX_BP, A_JERK_MAX_VALS)
 
 def limit_accel_in_turns(v_ego, angle_steers, a_target, CP):
   """
@@ -92,11 +96,11 @@ class LongitudinalPlanner:
     self.events = Events()
     self.turn_speed_controller = TurnSpeedController()
     self.dynamic_experimental_controller = DynamicExperimentalController()
-    self.manual_parking_brake = self.params.get_bool("SubaruManualParkingBrakeSng")
+    self.eco = self.params.get_bool("SubaruManualParkingBrakeSng") #斯巴鲁驻车作为eco开关
     self.stock_long_toyota = self.params.get_bool("StockLongToyota")
 
   def read_param(self):
-    self.manual_parking_brake = self.params.get_bool("SubaruManualParkingBrakeSng")
+    self.eco = self.params.get_bool("SubaruManualParkingBrakeSng")
     self.stock_long_toyota = self.params.get_bool("StockLongToyota")
     try:
       self.dynamic_experimental_controller.set_enabled(self.params.get_bool("DynamicExperimentalControl"))
@@ -142,15 +146,11 @@ class LongitudinalPlanner:
     prev_accel_constraint = not (reset_state or sm['carState'].standstill)
 
     # 使用斯巴鲁驻车来选择ECO加速表
-    if self.manual_parking_brake:
-      accel_limits = [A_CRUISE_MIN, get_eco_max_accel(v_ego)]
-      accel_limits_turns = limit_accel_in_turns(v_ego, sm['carState'].steeringAngleDeg, accel_limits, self.CP)
-    else:
-      accel_limits = [A_CRUISE_MIN, get_max_accel(v_ego)]
-      accel_limits_turns = limit_accel_in_turns(v_ego, sm['carState'].steeringAngleDeg, accel_limits, self.CP)
+    accel_limits = [A_CRUISE_MIN, get_max_accel(v_ego, self.eco)]
+    accel_limits_turns = limit_accel_in_turns(v_ego, sm['carState'].steeringAngleDeg, accel_limits, self.CP)
 
     #if self.mpc.mode == 'acc':
-    #  accel_limits = [A_CRUISE_MIN, get_max_accel(v_ego)]
+    #  accel_limits = [A_CRUISE_MIN, get_max_accel(v_ego, False)]
     #  accel_limits_turns = limit_accel_in_turns(v_ego, sm['carState'].steeringAngleDeg, accel_limits, self.CP)
     #else:
     #  accel_limits = [ACCEL_MIN, ACCEL_MAX]
