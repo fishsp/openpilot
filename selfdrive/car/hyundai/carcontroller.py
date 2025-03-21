@@ -370,13 +370,13 @@ class CarController(CarControllerBase):
       if CS.out.cruiseState.enabled and self.stock_long_toyota:  # 打开了丰田纵向开关才允许平滑
         accel_ramp_time_max = 5.0
         if self.accel_ramp_time < accel_ramp_time_max:
-          self.jerk = 0
           cruise_ramp = True
           self.accel_ramp_time += DT_CTRL
           self.accel_ramp_time = min(self.accel_ramp_time, accel_ramp_time_max)  # 确保不会超过 3.0
           self.accel_limit = interp(self.accel_ramp_time, [0, accel_ramp_time_max],
                                     [self.accel_start, max(self.accel_start, accel_limit)])
           self.jerk_limit = interp(self.accel_ramp_time, [0, accel_ramp_time_max], [0.2, max(0.2, jerk_limit)])
+          self.jerk = self.jerk_limit
 
           if self.frame % 10 == 0:
             if self.log_enable:
