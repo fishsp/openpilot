@@ -12,6 +12,7 @@ from openpilot.selfdrive.car.hyundai.values import HyundaiFlags, HyundaiFlagsSP,
 from openpilot.selfdrive.car.interfaces import CarControllerBase
 from openpilot.selfdrive.controls.lib.drive_helpers import HYUNDAI_V_CRUISE_MIN
 from openpilot.common.logger import logger
+from openpilot.selfdrive.controls.lib.longitudinal_planner import get_max_accel, get_max_jerk
 
 VisualAlert = car.CarControl.HUDControl.VisualAlert
 LongCtrlState = car.CarControl.Actuators.LongControlState
@@ -739,21 +740,17 @@ class CarController(CarControllerBase):
     a_error = accel - CS.out.aEgo
     jerk = jerk + (a_error * 2.0)
 
-    if False: #not self.hkg_custom_long_tuning:
-      self.jerk_u = 3.0 if actuators.longControlState == LongCtrlState.pid else 1.0
-      self.jerk_l = 5.0
+    startingJerk = 0.5
+    jerkLimit = 5.0
+    self.jerk_count += DT_CTRL
+    jerk_max = interp(self.jerk_count, [0, 1.5, 2.5], [startingJerk, startingJerk, jerkLimit])
+    if actuators.longControlState == LongCtrlState.off:
+      self.jerk_u = jerkLimit
+      self.jerk_l = jerkLimit
+      self.jerk_count = 0
     else:
-      startingJerk = 0.5
-      jerkLimit = 5.0
-      self.jerk_count += DT_CTRL
-      jerk_max = interp(self.jerk_count, [0, 1.5, 2.5], [startingJerk, startingJerk, jerkLimit])
-      if actuators.longControlState == LongCtrlState.off:
-        self.jerk_u = jerkLimit
-        self.jerk_l = jerkLimit
-        self.jerk_count = 0
-      else:
-        self.jerk_u = min(max(0.5, jerk * 2.0), jerk_max)
-        self.jerk_l = min(max(1.0, -jerk * 3.0), jerkLimit)
+      self.jerk_u = min(max(0.5, jerk * 2.0), jerk_max)
+      self.jerk_l = min(max(1.0, -jerk * 3.0), jerkLimit)
 
   def make_accel(self, CS, actuators):
     long_control = actuators.longControlState
