@@ -77,6 +77,7 @@ class CarController(CarControllerBase):
     self.jerk_limit_org = 0.0
     self.accel_limit_org = 0.0
     self.normal_log_num = 0
+    self.pcmCruiseSpeed_last = False
 
     sub_services = ['longitudinalPlanSP']
     if CP.openpilotLongitudinalControl:
@@ -329,6 +330,19 @@ class CarController(CarControllerBase):
         accel_limit = speed_limits[22.22]["accel"]  # 最小加速度
       else:
         jerk_limit, accel_limit = self.get_jerk_accel(speed, speed_limits)  # 根据速度查表并插值
+
+      # TEST
+      if self.cruiseState_last != CS.out.cruiseState.enabled:
+        if CS.out.cruiseState.enabled:
+          print("cruiseState.enabled True")
+        else:
+          print("cruiseState.enabled False")
+      if self.pcmCruiseSpeed_last != self.CP.pcmCruiseSpeed:
+        if self.CP.pcmCruiseSpeed:
+          print("pcmCruiseSpeed True")
+        else:
+          print("pcmCruiseSpeed False")
+      # TEST
 
       # 非巡航状态则重置self.accel_ramp_time
       if not CS.out.cruiseState.enabled:
