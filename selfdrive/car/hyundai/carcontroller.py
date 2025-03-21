@@ -125,11 +125,10 @@ class CarController(CarControllerBase):
     self.v_tsc = 0
     self.m_tsc = 0
     self.steady_speed = 0
-    self.hkg_can_smooth_stop = self.param_s.get_bool("HkgSmoothStop")
     self.lead_distance = 0
-    self.manual_parking_brake = self.param_s.get_bool("SubaruManualParkingBrakeSng")
-    self.accel_eco = self.param_s.get_bool("SubaruManualParkingBrakeSng")
-    self.stock_long_toyota = self.param_s.get_bool("StockLongToyota")
+    self.accel_eco = self.param_s.get_bool("SubaruManualParkingBrakeSng") #ECO加速模式
+    self.cruise_smooth = self.param_s.get_bool("StockLongToyota") #巡航平滑
+    self.custom_accel_limit = self.param_s.get_bool("HkgSmoothStop") #用户限制加速度
 
     self.jerk = 0.0
     self.jerk_l = 0.0
@@ -142,7 +141,6 @@ class CarController(CarControllerBase):
     self.accel_raw = 0
     self.accel_val = 0
     self.accel_last_jerk = 0
-    self.hkg_custom_long_tuning = self.param_s.get_bool("HkgSmoothStop")
 
   def calculate_lead_distance(self, hud_control: car.CarControl.HUDControl) -> float:
     lead_one = self.sm["radarState"].leadOne
@@ -176,9 +174,8 @@ class CarController(CarControllerBase):
       self.v_cruise_min = HYUNDAI_V_CRUISE_MIN[self.is_metric] * (CV.KPH_TO_MPH if not self.is_metric else 1)
 
     if self.frame % 200 == 0:
-      self.manual_parking_brake = self.param_s.get_bool("SubaruManualParkingBrakeSng")
       self.accel_eco = self.param_s.get_bool("SubaruManualParkingBrakeSng")
-      self.stock_long_toyota = self.param_s.get_bool("StockLongToyota")
+      self.cruise_smooth = self.param_s.get_bool("StockLongToyota")
     
     actuators = CC.actuators
     hud_control = CC.hudControl
@@ -356,14 +353,14 @@ class CarController(CarControllerBase):
 
       #根据模式选择加速度限制
       if self.accel_eco:
-        if self.hkg_custom_long_tuning:
+        if self.custom_accel_limit:
           accel_limit = eco_accel_limit
           jerk_limit = eco_jerk_limit
         else:
           accel_limit = get_max_accel(speed, True)
           jerk_limit = get_max_jerk(speed, True)
       else:
-        if self.hkg_custom_long_tuning:
+        if self.custom_accel_limit:
           accel_limit = stock_accel_limit
           jerk_limit = stock_jerk_limit
         else:
@@ -402,7 +399,7 @@ class CarController(CarControllerBase):
             logger.log("cruise start", speed=speed, aEgo=CS.out.aEgo, accel_start=self.accel_start,
                        accel_limit=accel_limit, jerk_limit=jerk_limit)
 
-      if CS.out.cruiseState.enabled and self.stock_long_toyota:  # 打开了丰田纵向开关才允许平滑
+      if CS.out.cruiseState.enabled and not self.cruise_smooth:  # 打开了丰田纵向开关才允许平滑
         accel_ramp_time_max = 5.0
         if self.accel_ramp_time < accel_ramp_time_max:
           cruise_ramp = True
@@ -431,7 +428,7 @@ class CarController(CarControllerBase):
       self.jerk_limit_org = jerk_limit
       self.accel_limit_org = accel_limit
 
-      if (actuators.accel >= 0) and (self.hkg_custom_long_tuning or cruise_ramp):  # 加速度大于指定值时 并且 (开启了用户限制(即HKG平滑停车开关) 或 在平滑巡航开启)
+      if (actuators.accel >= 0) and (self.custom_accel_limit or cruise_ramp):  # 加速度大于指定值时 并且 (开启了用户限制(即HKG平滑停车开关) 或 在平滑巡航开启)
         accel = clip(actuators.accel, CarControllerParams.ACCEL_MIN, self.accel_limit) # 使用 clip 限制加速度，确保加速度在指定范围内
         self.clip_accel = True
 
@@ -532,7 +529,6 @@ class CarController(CarControllerBase):
                        self_accel_limit=self.accel_limit, jerk_limit=self.jerk_limit_org,
                        self_jerk_limit=self.jerk_limit, jerk_l=self.jerk_l, jerk_u=self.jerk_u)
 
-        #if self.manual_parking_brake  or self.stock_long_toyota: #开启斯巴鲁驻车选项后
         if self.clip_accel:
           #jerk = min(self.jerk_u, self.jerk_limit) #确保self.jerk_u不会超过self.jerk_limit
           jerk = self.jerk_limit
