@@ -22,6 +22,15 @@ MAX_ANGLE = 85
 MAX_ANGLE_FRAMES = 89
 MAX_ANGLE_CONSECUTIVE_FRAMES = 2
 
+CAR_CRUISE_MAX_VALS = [1.4, 1.4,  1.4,  1.2,  1.0,   0.9,   0.8,   0.7,   0.5,  .43,  .32,  .088]
+CAR_CRUISE_ECO_VALS = [1.2, 1.2,  1.2,  1.1,  1.0,   0.9,   0.8,   0.7,   0.5,  .43,  .32,  .088]
+CAR_CRUISE_MAX_BP =   [0.,  2.78, 5.56, 8.33, 11.11, 13.33, 15.55, 17.78, 22.22, 25.,  30.,  55.]
+
+def car_get_max_accel(v_ego):
+  return interp(v_ego, CAR_CRUISE_MAX_BP, CAR_CRUISE_MAX_VALS)
+
+def car_get_eco_max_accel(v_ego):
+  return interp(v_ego, CAR_CRUISE_MAX_BP, CAR_CRUISE_ECO_VALS)
 
 def process_hud_alert(enabled, fingerprint, hud_control):
   sys_warning = (hud_control.visualAlert in (VisualAlert.steerRequired, VisualAlert.ldw))
