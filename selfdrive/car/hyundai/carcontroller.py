@@ -121,7 +121,7 @@ class CarController(CarControllerBase):
     self.lead_distance = 0
     self.hkg_can_smooth_stop = self.param_s.get_bool("HkgSmoothStop")
     self.accel_eco = self.param_s.get_bool("SubaruManualParkingBrakeSng") #ECO加速模式
-    self.cruise_smooth = self.param_s.get_bool("StockLongToyota") #巡航平滑
+    self.cruise_smooth_dis = self.param_s.get_bool("StockLongToyota") #巡航平滑
     self.custom_accel_limit = self.param_s.get_bool("LkasToggle") #用户限制加速度
 
     self.jerk = 0.0
@@ -178,7 +178,7 @@ class CarController(CarControllerBase):
 
     if self.frame % 200 == 0:
       self.accel_eco = self.param_s.get_bool("SubaruManualParkingBrakeSng")  # ECO加速模式
-      self.cruise_smooth = self.param_s.get_bool("StockLongToyota")  # 巡航平滑
+      self.cruise_smooth_dis = self.param_s.get_bool("StockLongToyota")  # 巡航平滑
       self.custom_accel_limit = self.param_s.get_bool("LkasToggle")  # 用户限制加速度
     
     actuators = CC.actuators
@@ -393,17 +393,22 @@ class CarController(CarControllerBase):
       cruise_ramp = False
       cruise_state_change = not self.cruiseState_last and CS.out.cruiseState.enabled
 
-      if cruise_state_change: # 巡航状态变化
+      if cruise_state_change or gas_press_change or (CS.out.cruiseState.enabled and self.gasPressed): # 巡航状态开启时 或 巡航状态下从踩油门到释放油门 或 巡航状态下用户踩着油门
+        if gas_press_change: # 巡航状态下从踩油门到释放油门
+          self.gas_change_smooth = True
+        elif self.gasPressed:
+          self.gas_change_smooth = False
+
         self.accel_ramp_time = 0.0  # 计时清0
         self.accel_start = min(CS.out.aEgo, accel_limit)  # 在CS.out.aEgo, accel_limit中选小的作为初始加速度限制
         if self.accel_start < 0.1:
           self.accel_start = 0.1
-        if self.log_enable:
-          if self.log_enable:
-            logger.log("cruise start", speed=speed, aEgo=CS.out.aEgo, accel_start=self.accel_start,
-                       accel_limit=accel_limit, jerk_limit=jerk_limit)
 
-      if CS.out.cruiseState.enabled and not self.cruise_smooth:  # 打开了丰田纵向开关才允许平滑
+        if self.log_enable and not self.gasPressed: # 在用户未踩油门时才允许打印日志
+          logger.log("cruise start", speed=speed, aEgo=CS.out.aEgo, accel_start=self.accel_start,
+                     accel_limit=accel_limit, jerk_limit=jerk_limit)
+
+      if (CS.out.cruiseState.enabled and not self.cruise_smooth_dis and not self.gasPressed) or self.gas_change_smooth:  # 巡航状态开启时进行平滑 或者 从踩油门到释放油门时进行平滑
         accel_ramp_time_max = 5.0
         if self.accel_ramp_time < accel_ramp_time_max:
           cruise_ramp = True
@@ -419,6 +424,7 @@ class CarController(CarControllerBase):
                          self_jerk_limit=self.jerk_limit, accel_limit=accel_limit, jerk_limit=jerk_limit)
 
           if self.accel_ramp_time >= accel_ramp_time_max:
+            self.gas_change_smooth = False #结束除油门变化平滑
             logger.log("cruise ramp end")
         else:
           self.accel_limit = accel_limit  # 3秒后直接使用PID加速度
