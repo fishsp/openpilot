@@ -79,6 +79,9 @@ class CarController(CarControllerBase):
     self.normal_log_num = 0
     self.pcmCruiseSpeed_last = False
     self.log_enable = True
+    self.gasPressed = False
+    self.gasPressed_last = False
+    self.gas_change_smooth = False
 
     sub_services = ['longitudinalPlanSP']
     if CP.openpilotLongitudinalControl:
@@ -150,6 +153,12 @@ class CarController(CarControllerBase):
   def update(self, CC, CS, now_nanos):
     if not self.CP.pcmCruiseSpeed or (self.CP.openpilotLongitudinalControl and self.frame % 5 == 0):
       self.sm.update(0)
+
+    self.gasPressed = self.sm['carState'].gasPressed
+    gas_press_change = not self.gasPressed and self.gasPressed_last and CS.out.cruiseState.enabled  # 由踩油门变成未踩油门并且开启了巡航
+    if gas_press_change:
+      logger.log("gas press change")
+    self.gasPressed_last = self.gasPressed
 
     if not self.CP.pcmCruiseSpeed:
       if self.sm.updated['longitudinalPlanSP']:
