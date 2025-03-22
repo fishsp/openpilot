@@ -83,7 +83,7 @@ class CarController(CarControllerBase):
     self.gasPressed_last = False
     self.gas_change_smooth = False
 
-    sub_services = ['longitudinalPlanSP']
+    sub_services = ['longitudinalPlanSP', 'carState']
     if CP.openpilotLongitudinalControl:
       sub_services.append('radarState')
     # TODO: Always true, prep for future conditional refactoring
