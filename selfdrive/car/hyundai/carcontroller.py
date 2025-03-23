@@ -23,6 +23,12 @@ MAX_ANGLE = 85
 MAX_ANGLE_FRAMES = 89
 MAX_ANGLE_CONSECUTIVE_FRAMES = 2
 
+# 设定阈值
+TURN_ANGLE_THRESHOLD = 10.0  # 方向盘角度超过10°认为正在转弯
+TURN_YAW_THRESHOLD = 0.05  # 横摆角速度大于0.05°/s认为正在转弯
+STRAIGHT_ANGLE_THRESHOLD = 3.0  # 方向盘回正角度小于3°认为转弯结束
+STRAIGHT_YAW_THRESHOLD = 0.01  # Yaw Rate小于0.01°/s认为转弯结束
+
 def process_hud_alert(enabled, fingerprint, hud_control):
   sys_warning = (hud_control.visualAlert in (VisualAlert.steerRequired, VisualAlert.ldw))
 
@@ -78,7 +84,7 @@ class CarController(CarControllerBase):
     self.accel_limit_org = 0.0
     self.normal_log_num = 0
     self.pcmCruiseSpeed_last = False
-    self.log_enable = True
+    self.log_enable = True  # 是否允许日志记录
     self.gasPressed = False
     self.gasPressed_last = False
     self.gas_change_smooth = False
@@ -119,7 +125,7 @@ class CarController(CarControllerBase):
     self.m_tsc = 0
     self.steady_speed = 0
     self.lead_distance = 0
-    self.hkg_can_smooth_stop = self.param_s.get_bool("HkgSmoothStop")
+    #self.hkg_can_smooth_stop = self.param_s.get_bool("HkgSmoothStop")
     self.accel_eco = self.param_s.get_bool("SubaruManualParkingBrakeSng") #ECO加速模式
     self.cruise_smooth_dis = self.param_s.get_bool("StockLongToyota") #巡航平滑
     self.custom_accel_limit = self.param_s.get_bool("LkasToggle") #用户限制加速度
@@ -135,6 +141,10 @@ class CarController(CarControllerBase):
     self.accel_raw = 0
     self.accel_val = 0
     self.accel_last_jerk = 0
+
+    self.was_turning = False  # 记录之前是否在转弯
+    self.last_ax = 0.0  # 记录上一次的纵向加速度（用于平滑滤波）
+    self.turning_finished_smooth = False
 
     self.lkas_toggle = self.param_s.get_bool("LkasToggle")
     logger.log("lkas", LkasToggle=self.lkas_toggle)
@@ -159,6 +169,11 @@ class CarController(CarControllerBase):
     if gas_press_change:
       logger.log("gas press change")
     self.gasPressed_last = self.gasPressed
+
+    # 检查转弯状态
+    is_turning, is_turning_finished = self.check_turning_status(CS)
+    if self.log_enable and is_turning_finished:
+      logger.log("is_turning_finished")
 
     if not self.CP.pcmCruiseSpeed:
       if self.sm.updated['longitudinalPlanSP']:
@@ -516,9 +531,6 @@ class CarController(CarControllerBase):
         self.lead_distance = self.calculate_lead_distance(hud_control)
 
       if self.frame % 2 == 0 and self.CP.openpilotLongitudinalControl:
-        if self.hkg_can_smooth_stop:
-          stopping = stopping and CS.out.vEgoRaw < 0.05
-
         # TODO: unclear if this is needed
         jerk = 3.0 if actuators.longControlState == LongCtrlState.pid else 1.0
         use_fca = self.CP.flags & HyundaiFlags.USE_FCA.value
@@ -796,3 +808,61 @@ class CarController(CarControllerBase):
       accel_limit = low_limits["accel"] + (high_limits["accel"] - low_limits["accel"]) * ratio
 
     return jerk, accel_limit
+
+  def check_turning_status(self, CS):
+    """
+    判断车辆是否正在转弯或转弯结束。
+
+    :param CS: CarState 对象，包含车辆状态数据
+    :return: 一个元组 (is_turning, is_turning_finished)
+             - is_turning: 是否正在转弯（True/False）
+             - is_turning_finished: 是否转弯已结束（True/False），必须先检测到转弯后才会触发
+    """
+
+    # 读取车辆状态
+    steeringAngle = CS.steeringAngleDeg  # 方向盘角度（度）
+    yawRate = CS.yawRate  # 车辆横摆角速度（°/s）
+
+    # 判断车辆是否在转弯
+    is_turning = abs(steeringAngle) > TURN_ANGLE_THRESHOLD or abs(yawRate) > TURN_YAW_THRESHOLD
+
+    # 只有在 **之前检测到车辆正在转弯后**，才允许检测转弯结束
+    if self.was_turning:
+      is_turning_finished = abs(steeringAngle) < STRAIGHT_ANGLE_THRESHOLD and abs(yawRate) < STRAIGHT_YAW_THRESHOLD
+    else:
+      is_turning_finished = False  # 之前没检测到转弯，不能判断转弯结束
+
+    # 记录当前是否在转弯，以便下次调用使用
+    self.was_turning = is_turning
+
+    return is_turning, is_turning_finished
+
+  def limit_longitudinal_acceleration(self, CS, a_desired, max_accel_base):
+    """
+    仅在加速时，根据方向盘角度和横摆角限制纵向加速度，制动（负加速度）不受影响
+
+    :param CS: CarState 对象，包含车辆状态数据
+    :param a_desired: 期望纵向加速度（m/s²）
+    :param max_accel_base: 传入的基础最大加速度（m/s²）
+    :return: 受限后的纵向加速度
+    """
+    # 获取车辆状态信息
+    steeringAngle = abs(CS.steeringAngleDeg)  # 方向盘角度（绝对值，单位°）
+    yawRate = abs(CS.yawRate)  # 横摆角速度（°/s）
+
+    # 计算方向盘角度和横摆角的影响因子
+    steering_factor = interp(steeringAngle, [0, 15, 30], [0.8, 0.5, 0.3])  # 方向盘角度影响
+    yaw_factor = interp(yawRate, [0, 0.1, 0.3], [0.8, 0.6, 0.4])  # 横摆角速度影响
+
+    # 计算最终的加速度限制
+    max_accel = max_accel_base * min(steering_factor, yaw_factor)
+
+    # **仅对正加速度进行限制，负加速度（制动）不变**
+    if a_desired > 0:
+        a_clamped = min(a_desired, max_accel)
+    else:
+        a_clamped = a_desired  # 负加速度不受限制
+
+    # 平滑滤波，防止加速度突变
+    self.last_ax = 0.3 * a_clamped + 0.7 * self.last_ax  # 平滑因子 0.3
+    return self.last_ax
