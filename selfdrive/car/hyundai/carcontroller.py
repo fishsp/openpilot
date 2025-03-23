@@ -829,11 +829,15 @@ class CarController(CarControllerBase):
     # 只有在 **之前检测到车辆正在转弯后**，才允许检测转弯结束
     if self.was_turning:
       is_turning_finished = abs(steeringAngle) < STRAIGHT_ANGLE_THRESHOLD and abs(yawRate) < STRAIGHT_YAW_THRESHOLD
+      if is_turning_finished:
+        self.was_turning = False
+      is_turning = self.was_turning
     else:
       is_turning_finished = False  # 之前没检测到转弯，不能判断转弯结束
 
     # 记录当前是否在转弯，以便下次调用使用
-    self.was_turning = is_turning
+    if not self.was_turning:
+      self.was_turning = is_turning
 
     return is_turning, is_turning_finished
 
