@@ -86,6 +86,8 @@ enum class EventName_b8007ed8a646b5e6: uint16_t {
 };
 CAPNP_DECLARE_ENUM(EventName, b8007ed8a646b5e6);
 CAPNP_DECLARE_SCHEMA(80ae746ee2596b11);
+CAPNP_DECLARE_SCHEMA(dafc8108312924ef);
+CAPNP_DECLARE_SCHEMA(817ed0dfcd0ed40f);
 CAPNP_DECLARE_SCHEMA(a5cd762cd951a455);
 CAPNP_DECLARE_SCHEMA(f98d843bfd7004a3);
 CAPNP_DECLARE_SCHEMA(b8aa92adead100ba);
@@ -291,9 +293,41 @@ struct CarParamsSP {
   class Reader;
   class Builder;
   class Pipeline;
+  struct NeuralNetworkLateralControl;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(80ae746ee2596b11, 1, 0)
+    CAPNP_DECLARE_STRUCT_HEADER(80ae746ee2596b11, 1, 1)
+    #if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
+    #endif  // !CAPNP_LITE
+  };
+};
+
+struct CarParamsSP::NeuralNetworkLateralControl {
+  NeuralNetworkLateralControl() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+  struct Model;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(dafc8108312924ef, 1, 1)
+    #if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
+    #endif  // !CAPNP_LITE
+  };
+};
+
+struct CarParamsSP::NeuralNetworkLateralControl::Model {
+  Model() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(817ed0dfcd0ed40f, 0, 2)
     #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() { return &schema->defaultBrand; }
     #endif  // !CAPNP_LITE
@@ -1599,6 +1633,9 @@ public:
 
   inline  ::int16_t getSafetyParam() const;
 
+  inline bool hasNeuralNetworkLateralControl() const;
+  inline  ::cereal::CarParamsSP::NeuralNetworkLateralControl::Reader getNeuralNetworkLateralControl() const;
+
 private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -1633,6 +1670,13 @@ public:
   inline  ::int16_t getSafetyParam();
   inline void setSafetyParam( ::int16_t value);
 
+  inline bool hasNeuralNetworkLateralControl();
+  inline  ::cereal::CarParamsSP::NeuralNetworkLateralControl::Builder getNeuralNetworkLateralControl();
+  inline void setNeuralNetworkLateralControl( ::cereal::CarParamsSP::NeuralNetworkLateralControl::Reader value);
+  inline  ::cereal::CarParamsSP::NeuralNetworkLateralControl::Builder initNeuralNetworkLateralControl();
+  inline void adoptNeuralNetworkLateralControl(::capnp::Orphan< ::cereal::CarParamsSP::NeuralNetworkLateralControl>&& value);
+  inline ::capnp::Orphan< ::cereal::CarParamsSP::NeuralNetworkLateralControl> disownNeuralNetworkLateralControl();
+
 private:
   ::capnp::_::StructBuilder _builder;
   template <typename, ::capnp::Kind>
@@ -1646,6 +1690,185 @@ private:
 class CarParamsSP::Pipeline {
 public:
   typedef CarParamsSP Pipelines;
+
+  inline Pipeline(decltype(nullptr)): _typeless(nullptr) {}
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {}
+
+  inline  ::cereal::CarParamsSP::NeuralNetworkLateralControl::Pipeline getNeuralNetworkLateralControl();
+private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
+class CarParamsSP::NeuralNetworkLateralControl::Reader {
+public:
+  typedef NeuralNetworkLateralControl Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base): _reader(base) {}
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool hasModel() const;
+  inline  ::cereal::CarParamsSP::NeuralNetworkLateralControl::Model::Reader getModel() const;
+
+  inline bool getFuzzyFingerprint() const;
+
+private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class CarParamsSP::NeuralNetworkLateralControl::Builder {
+public:
+  typedef NeuralNetworkLateralControl Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {}
+  inline explicit Builder(::capnp::_::StructBuilder base): _builder(base) {}
+  inline operator Reader() const { return Reader(_builder.asReader()); }
+  inline Reader asReader() const { return *this; }
+
+  inline ::capnp::MessageSize totalSize() const { return asReader().totalSize(); }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const { return asReader().toString(); }
+#endif  // !CAPNP_LITE
+
+  inline bool hasModel();
+  inline  ::cereal::CarParamsSP::NeuralNetworkLateralControl::Model::Builder getModel();
+  inline void setModel( ::cereal::CarParamsSP::NeuralNetworkLateralControl::Model::Reader value);
+  inline  ::cereal::CarParamsSP::NeuralNetworkLateralControl::Model::Builder initModel();
+  inline void adoptModel(::capnp::Orphan< ::cereal::CarParamsSP::NeuralNetworkLateralControl::Model>&& value);
+  inline ::capnp::Orphan< ::cereal::CarParamsSP::NeuralNetworkLateralControl::Model> disownModel();
+
+  inline bool getFuzzyFingerprint();
+  inline void setFuzzyFingerprint(bool value);
+
+private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class CarParamsSP::NeuralNetworkLateralControl::Pipeline {
+public:
+  typedef NeuralNetworkLateralControl Pipelines;
+
+  inline Pipeline(decltype(nullptr)): _typeless(nullptr) {}
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {}
+
+  inline  ::cereal::CarParamsSP::NeuralNetworkLateralControl::Model::Pipeline getModel();
+private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
+class CarParamsSP::NeuralNetworkLateralControl::Model::Reader {
+public:
+  typedef Model Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base): _reader(base) {}
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool hasPath() const;
+  inline  ::capnp::Text::Reader getPath() const;
+
+  inline bool hasName() const;
+  inline  ::capnp::Text::Reader getName() const;
+
+private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class CarParamsSP::NeuralNetworkLateralControl::Model::Builder {
+public:
+  typedef Model Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {}
+  inline explicit Builder(::capnp::_::StructBuilder base): _builder(base) {}
+  inline operator Reader() const { return Reader(_builder.asReader()); }
+  inline Reader asReader() const { return *this; }
+
+  inline ::capnp::MessageSize totalSize() const { return asReader().totalSize(); }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const { return asReader().toString(); }
+#endif  // !CAPNP_LITE
+
+  inline bool hasPath();
+  inline  ::capnp::Text::Builder getPath();
+  inline void setPath( ::capnp::Text::Reader value);
+  inline  ::capnp::Text::Builder initPath(unsigned int size);
+  inline void adoptPath(::capnp::Orphan< ::capnp::Text>&& value);
+  inline ::capnp::Orphan< ::capnp::Text> disownPath();
+
+  inline bool hasName();
+  inline  ::capnp::Text::Builder getName();
+  inline void setName( ::capnp::Text::Reader value);
+  inline  ::capnp::Text::Builder initName(unsigned int size);
+  inline void adoptName(::capnp::Orphan< ::capnp::Text>&& value);
+  inline ::capnp::Orphan< ::capnp::Text> disownName();
+
+private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class CarParamsSP::NeuralNetworkLateralControl::Model::Pipeline {
+public:
+  typedef Model Pipelines;
 
   inline Pipeline(decltype(nullptr)): _typeless(nullptr) {}
   inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
@@ -4077,6 +4300,166 @@ inline  ::int16_t CarParamsSP::Builder::getSafetyParam() {
 inline void CarParamsSP::Builder::setSafetyParam( ::int16_t value) {
   _builder.setDataField< ::int16_t>(
       ::capnp::bounded<2>() * ::capnp::ELEMENTS, value);
+}
+
+inline bool CarParamsSP::Reader::hasNeuralNetworkLateralControl() const {
+  return !_reader.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
+}
+inline bool CarParamsSP::Builder::hasNeuralNetworkLateralControl() {
+  return !_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
+}
+inline  ::cereal::CarParamsSP::NeuralNetworkLateralControl::Reader CarParamsSP::Reader::getNeuralNetworkLateralControl() const {
+  return ::capnp::_::PointerHelpers< ::cereal::CarParamsSP::NeuralNetworkLateralControl>::get(_reader.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline  ::cereal::CarParamsSP::NeuralNetworkLateralControl::Builder CarParamsSP::Builder::getNeuralNetworkLateralControl() {
+  return ::capnp::_::PointerHelpers< ::cereal::CarParamsSP::NeuralNetworkLateralControl>::get(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline  ::cereal::CarParamsSP::NeuralNetworkLateralControl::Pipeline CarParamsSP::Pipeline::getNeuralNetworkLateralControl() {
+  return  ::cereal::CarParamsSP::NeuralNetworkLateralControl::Pipeline(_typeless.getPointerField(0));
+}
+#endif  // !CAPNP_LITE
+inline void CarParamsSP::Builder::setNeuralNetworkLateralControl( ::cereal::CarParamsSP::NeuralNetworkLateralControl::Reader value) {
+  ::capnp::_::PointerHelpers< ::cereal::CarParamsSP::NeuralNetworkLateralControl>::set(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), value);
+}
+inline  ::cereal::CarParamsSP::NeuralNetworkLateralControl::Builder CarParamsSP::Builder::initNeuralNetworkLateralControl() {
+  return ::capnp::_::PointerHelpers< ::cereal::CarParamsSP::NeuralNetworkLateralControl>::init(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline void CarParamsSP::Builder::adoptNeuralNetworkLateralControl(
+    ::capnp::Orphan< ::cereal::CarParamsSP::NeuralNetworkLateralControl>&& value) {
+  ::capnp::_::PointerHelpers< ::cereal::CarParamsSP::NeuralNetworkLateralControl>::adopt(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), kj::mv(value));
+}
+inline ::capnp::Orphan< ::cereal::CarParamsSP::NeuralNetworkLateralControl> CarParamsSP::Builder::disownNeuralNetworkLateralControl() {
+  return ::capnp::_::PointerHelpers< ::cereal::CarParamsSP::NeuralNetworkLateralControl>::disown(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline bool CarParamsSP::NeuralNetworkLateralControl::Reader::hasModel() const {
+  return !_reader.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
+}
+inline bool CarParamsSP::NeuralNetworkLateralControl::Builder::hasModel() {
+  return !_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
+}
+inline  ::cereal::CarParamsSP::NeuralNetworkLateralControl::Model::Reader CarParamsSP::NeuralNetworkLateralControl::Reader::getModel() const {
+  return ::capnp::_::PointerHelpers< ::cereal::CarParamsSP::NeuralNetworkLateralControl::Model>::get(_reader.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline  ::cereal::CarParamsSP::NeuralNetworkLateralControl::Model::Builder CarParamsSP::NeuralNetworkLateralControl::Builder::getModel() {
+  return ::capnp::_::PointerHelpers< ::cereal::CarParamsSP::NeuralNetworkLateralControl::Model>::get(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline  ::cereal::CarParamsSP::NeuralNetworkLateralControl::Model::Pipeline CarParamsSP::NeuralNetworkLateralControl::Pipeline::getModel() {
+  return  ::cereal::CarParamsSP::NeuralNetworkLateralControl::Model::Pipeline(_typeless.getPointerField(0));
+}
+#endif  // !CAPNP_LITE
+inline void CarParamsSP::NeuralNetworkLateralControl::Builder::setModel( ::cereal::CarParamsSP::NeuralNetworkLateralControl::Model::Reader value) {
+  ::capnp::_::PointerHelpers< ::cereal::CarParamsSP::NeuralNetworkLateralControl::Model>::set(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), value);
+}
+inline  ::cereal::CarParamsSP::NeuralNetworkLateralControl::Model::Builder CarParamsSP::NeuralNetworkLateralControl::Builder::initModel() {
+  return ::capnp::_::PointerHelpers< ::cereal::CarParamsSP::NeuralNetworkLateralControl::Model>::init(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline void CarParamsSP::NeuralNetworkLateralControl::Builder::adoptModel(
+    ::capnp::Orphan< ::cereal::CarParamsSP::NeuralNetworkLateralControl::Model>&& value) {
+  ::capnp::_::PointerHelpers< ::cereal::CarParamsSP::NeuralNetworkLateralControl::Model>::adopt(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), kj::mv(value));
+}
+inline ::capnp::Orphan< ::cereal::CarParamsSP::NeuralNetworkLateralControl::Model> CarParamsSP::NeuralNetworkLateralControl::Builder::disownModel() {
+  return ::capnp::_::PointerHelpers< ::cereal::CarParamsSP::NeuralNetworkLateralControl::Model>::disown(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline bool CarParamsSP::NeuralNetworkLateralControl::Reader::getFuzzyFingerprint() const {
+  return _reader.getDataField<bool>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+
+inline bool CarParamsSP::NeuralNetworkLateralControl::Builder::getFuzzyFingerprint() {
+  return _builder.getDataField<bool>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+inline void CarParamsSP::NeuralNetworkLateralControl::Builder::setFuzzyFingerprint(bool value) {
+  _builder.setDataField<bool>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
+}
+
+inline bool CarParamsSP::NeuralNetworkLateralControl::Model::Reader::hasPath() const {
+  return !_reader.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
+}
+inline bool CarParamsSP::NeuralNetworkLateralControl::Model::Builder::hasPath() {
+  return !_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS).isNull();
+}
+inline  ::capnp::Text::Reader CarParamsSP::NeuralNetworkLateralControl::Model::Reader::getPath() const {
+  return ::capnp::_::PointerHelpers< ::capnp::Text>::get(_reader.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline  ::capnp::Text::Builder CarParamsSP::NeuralNetworkLateralControl::Model::Builder::getPath() {
+  return ::capnp::_::PointerHelpers< ::capnp::Text>::get(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline void CarParamsSP::NeuralNetworkLateralControl::Model::Builder::setPath( ::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers< ::capnp::Text>::set(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), value);
+}
+inline  ::capnp::Text::Builder CarParamsSP::NeuralNetworkLateralControl::Model::Builder::initPath(unsigned int size) {
+  return ::capnp::_::PointerHelpers< ::capnp::Text>::init(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), size);
+}
+inline void CarParamsSP::NeuralNetworkLateralControl::Model::Builder::adoptPath(
+    ::capnp::Orphan< ::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers< ::capnp::Text>::adopt(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS), kj::mv(value));
+}
+inline ::capnp::Orphan< ::capnp::Text> CarParamsSP::NeuralNetworkLateralControl::Model::Builder::disownPath() {
+  return ::capnp::_::PointerHelpers< ::capnp::Text>::disown(_builder.getPointerField(
+      ::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline bool CarParamsSP::NeuralNetworkLateralControl::Model::Reader::hasName() const {
+  return !_reader.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS).isNull();
+}
+inline bool CarParamsSP::NeuralNetworkLateralControl::Model::Builder::hasName() {
+  return !_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS).isNull();
+}
+inline  ::capnp::Text::Reader CarParamsSP::NeuralNetworkLateralControl::Model::Reader::getName() const {
+  return ::capnp::_::PointerHelpers< ::capnp::Text>::get(_reader.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline  ::capnp::Text::Builder CarParamsSP::NeuralNetworkLateralControl::Model::Builder::getName() {
+  return ::capnp::_::PointerHelpers< ::capnp::Text>::get(_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline void CarParamsSP::NeuralNetworkLateralControl::Model::Builder::setName( ::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers< ::capnp::Text>::set(_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS), value);
+}
+inline  ::capnp::Text::Builder CarParamsSP::NeuralNetworkLateralControl::Model::Builder::initName(unsigned int size) {
+  return ::capnp::_::PointerHelpers< ::capnp::Text>::init(_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS), size);
+}
+inline void CarParamsSP::NeuralNetworkLateralControl::Model::Builder::adoptName(
+    ::capnp::Orphan< ::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers< ::capnp::Text>::adopt(_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS), kj::mv(value));
+}
+inline ::capnp::Orphan< ::capnp::Text> CarParamsSP::NeuralNetworkLateralControl::Model::Builder::disownName() {
+  return ::capnp::_::PointerHelpers< ::capnp::Text>::disown(_builder.getPointerField(
+      ::capnp::bounded<1>() * ::capnp::POINTERS));
 }
 
 inline bool CarControlSP::Reader::hasMads() const {
