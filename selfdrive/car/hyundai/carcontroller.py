@@ -24,10 +24,10 @@ MAX_ANGLE_FRAMES = 89
 MAX_ANGLE_CONSECUTIVE_FRAMES = 2
 
 # 设定阈值
-TURN_ANGLE_THRESHOLD = 10.0  # 方向盘角度超过10°认为正在转弯
-TURN_YAW_THRESHOLD = 0.05  # 横摆角速度大于0.05°/s认为正在转弯
-STRAIGHT_ANGLE_THRESHOLD = 3.0  # 方向盘回正角度小于3°认为转弯结束
-STRAIGHT_YAW_THRESHOLD = 0.01  # Yaw Rate小于0.01°/s认为转弯结束
+TURN_ANGLE_THRESHOLD = 20.0  # 方向盘角度超过20°认为正在转弯
+TURN_YAW_THRESHOLD = 0.10  # 横摆角速度大于0.10°/s认为正在转弯
+STRAIGHT_ANGLE_THRESHOLD = 10.0  # 方向盘回正角度小于10°认为转弯结束
+STRAIGHT_YAW_THRESHOLD = 0.03  # Yaw Rate小于0.03°/s认为转弯结束
 
 def process_hud_alert(enabled, fingerprint, hud_control):
   sys_warning = (hud_control.visualAlert in (VisualAlert.steerRequired, VisualAlert.ldw))
@@ -457,6 +457,12 @@ class CarController(CarControllerBase):
         accel = clip(actuators.accel, CarControllerParams.ACCEL_MIN, self.accel_limit) # 使用 clip 限制加速度，确保加速度在指定范围内
         self.clip_accel = True
 
+      #如果在转弯，则根据方向盘角度进行加速度的限制
+      accel_steer = self.limit_longitudinal_acceleration(self, CS, accel, self.accel_limit)
+      if is_turning:
+        accel = accel_steer
+        self.clip_accel = True
+
       self.make_jerk(CS, accel, actuators)
 
     # CAN-FD platforms
@@ -823,23 +829,17 @@ class CarController(CarControllerBase):
     steeringAngle = CS.out.steeringAngleDeg  # 方向盘角度（度）
     yawRate = CS.out.yawRate  # 车辆横摆角速度（°/s）
 
-    # 判断车辆是否在转弯
-    is_turning = abs(steeringAngle) > TURN_ANGLE_THRESHOLD or abs(yawRate) > TURN_YAW_THRESHOLD
-
-    # 只有在 **之前检测到车辆正在转弯后**，才允许检测转弯结束
-    if self.was_turning:
+    if self.was_turning: #在转弯状态中，则检测是否转弯结束
       is_turning_finished = abs(steeringAngle) < STRAIGHT_ANGLE_THRESHOLD and abs(yawRate) < STRAIGHT_YAW_THRESHOLD
       if is_turning_finished:
         self.was_turning = False
-      is_turning = self.was_turning
-    else:
+    else: # 判断是否在转弯
+      is_turning = abs(steeringAngle) > TURN_ANGLE_THRESHOLD or abs(yawRate) > TURN_YAW_THRESHOLD
+      if is_turning:
+        self.was_turning = True
       is_turning_finished = False  # 之前没检测到转弯，不能判断转弯结束
 
-    # 记录当前是否在转弯，以便下次调用使用
-    if not self.was_turning:
-      self.was_turning = is_turning
-
-    return is_turning, is_turning_finished
+    return self.was_turning, is_turning_finished
 
   def limit_longitudinal_acceleration(self, CS, a_desired, max_accel_base):
     """
@@ -851,22 +851,30 @@ class CarController(CarControllerBase):
     :return: 受限后的纵向加速度
     """
     # 获取车辆状态信息
-    steeringAngle = abs(CS.out.steeringAngleDeg)  # 方向盘角度（绝对值，单位°）
+    steeringAngle = abs(CS.out.steeringAngleDeg)  # 方向盘角度（°）
     yawRate = abs(CS.out.yawRate)  # 横摆角速度（°/s）
+    speed = CS.out.vEgo  # 车辆速度（m/s）
 
-    # 计算方向盘角度和横摆角的影响因子
-    steering_factor = interp(steeringAngle, [0, 15, 30], [0.8, 0.5, 0.3])  # 方向盘角度影响
-    yaw_factor = interp(yawRate, [0, 0.1, 0.3], [0.8, 0.6, 0.4])  # 横摆角速度影响
+    # 低速状态下不做严格限制，但仍然平滑处理，防止突变
+    if speed < 5.56: # 20km/h
+      self.last_ax = 0.8 * self.last_ax + 0.2 * a_desired  # 低速时轻度平滑
+      return self.last_ax
+
+    # 计算方向盘角度和横摆角的影响因子（优化插值范围）
+    steering_factor = np.interp(steeringAngle, [0, 20, 40], [1.0, 0.8, 0.5])
+    yaw_factor = np.interp(yawRate, [0, 0.1, 0.3], [1.0, 0.7, 0.4])
 
     # 计算最终的加速度限制
     max_accel = max_accel_base * min(steering_factor, yaw_factor)
 
-    # **仅对正加速度进行限制，负加速度（制动）不变**
+    # 仅限制正向加速度
     if a_desired > 0:
-        a_clamped = min(a_desired, max_accel)
+      a_clamped = min(a_desired, max_accel)
     else:
-        a_clamped = a_desired  # 负加速度不受限制
+      a_clamped = a_desired  # 负加速度不变
 
-    # 平滑滤波，防止加速度突变
-    self.last_ax = 0.3 * a_clamped + 0.7 * self.last_ax  # 平滑因子 0.3
+    # 使用动态平滑因子（低速时更快响应）
+    smoothing_factor = 0.5 if speed < 10 else 0.3
+    self.last_ax = smoothing_factor * a_clamped + (1 - smoothing_factor) * self.last_ax
+
     return self.last_ax
