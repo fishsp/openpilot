@@ -458,10 +458,10 @@ class CarController(CarControllerBase):
         self.clip_accel = True
 
       #如果在转弯，则根据方向盘角度进行加速度的限制
-      accel_steer = self.limit_longitudinal_acceleration(self, CS, accel, self.accel_limit)
-      if is_turning:
-        accel = accel_steer
-        self.clip_accel = True
+      #accel_steer = self.limit_longitudinal_acceleration(self, CS, accel, self.accel_limit)
+      #if is_turning:
+      #  accel = accel_steer
+      #  self.clip_accel = True
 
       self.make_jerk(CS, accel, actuators)
 
