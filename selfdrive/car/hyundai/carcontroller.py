@@ -820,8 +820,8 @@ class CarController(CarControllerBase):
     """
 
     # 读取车辆状态
-    steeringAngle = CS.steeringAngleDeg  # 方向盘角度（度）
-    yawRate = CS.yawRate  # 车辆横摆角速度（°/s）
+    steeringAngle = CS.out.steeringAngleDeg  # 方向盘角度（度）
+    yawRate = CS.out.yawRate  # 车辆横摆角速度（°/s）
 
     # 判断车辆是否在转弯
     is_turning = abs(steeringAngle) > TURN_ANGLE_THRESHOLD or abs(yawRate) > TURN_YAW_THRESHOLD
@@ -851,8 +851,8 @@ class CarController(CarControllerBase):
     :return: 受限后的纵向加速度
     """
     # 获取车辆状态信息
-    steeringAngle = abs(CS.steeringAngleDeg)  # 方向盘角度（绝对值，单位°）
-    yawRate = abs(CS.yawRate)  # 横摆角速度（°/s）
+    steeringAngle = abs(CS.out.steeringAngleDeg)  # 方向盘角度（绝对值，单位°）
+    yawRate = abs(CS.out.yawRate)  # 横摆角速度（°/s）
 
     # 计算方向盘角度和横摆角的影响因子
     steering_factor = interp(steeringAngle, [0, 15, 30], [0.8, 0.5, 0.3])  # 方向盘角度影响
