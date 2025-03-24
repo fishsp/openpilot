@@ -142,6 +142,11 @@ class CarController(CarControllerBase):
     self.accel_val = 0
     self.accel_last_jerk = 0
 
+    self.base_time = 0.13  # 基础平滑时间 0.1(加速约1.57秒) 0.13(加速约2秒)
+    self.k1 = 0.04  # 速度影响因子 0.03(加速约1.57秒) 0.04(加速约1.57秒)
+    self.brake_factor = 0.4  # 减速时的快速响应因子(减速约0.46s)
+    self.last_accel = 0.0  # 记录上一次的加速度
+
     self.was_turning = False  # 记录之前是否在转弯
     self.last_ax = 0.0  # 记录上一次的纵向加速度（用于平滑滤波）
     self.turning_finished_smooth = False
@@ -462,6 +467,9 @@ class CarController(CarControllerBase):
       #if is_turning:
       #  accel = accel_steer
       #  self.clip_accel = True
+
+      # 通过算法对加速度进行平滑
+      accel = smooth_accel(accel, speed, DT_CTRL)
 
       self.make_jerk(CS, accel, actuators)
 
@@ -814,6 +822,23 @@ class CarController(CarControllerBase):
       accel_limit = low_limits["accel"] + (high_limits["accel"] - low_limits["accel"]) * ratio
 
     return jerk, accel_limit
+
+  def smooth_accel(self, accel, speed, dt=0.01):  # 默认 dt = 0.01s (OpenPilot)
+    # 计算基础平滑时间
+    smoothing_time = self.base_time * (1 + speed * self.k1)
+
+    # 如果加速度在减少（减速），缩短平滑时间
+    if accel < self.last_accel:
+      smoothing_time *= self.brake_factor
+
+    # 计算平滑系数
+    alpha = dt / (smoothing_time + dt)
+
+    # 低通滤波
+    smoothed_accel = (1 - alpha) * self.last_accel + alpha * accel
+    self.last_accel = smoothed_accel  # 记录当前平滑加速度
+
+    return smoothed_accel
 
   def check_turning_status(self, CS):
     """
