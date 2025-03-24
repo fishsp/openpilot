@@ -861,8 +861,8 @@ class CarController(CarControllerBase):
       return self.last_ax
 
     # 计算方向盘角度和横摆角的影响因子（优化插值范围）
-    steering_factor = np.interp(steeringAngle, [0, 20, 40], [1.0, 0.8, 0.5])
-    yaw_factor = np.interp(yawRate, [0, 0.1, 0.3], [1.0, 0.7, 0.4])
+    steering_factor = interp(steeringAngle, [0, 20, 40], [1.0, 0.8, 0.5])
+    yaw_factor = interp(yawRate, [0, 0.1, 0.3], [1.0, 0.7, 0.4])
 
     # 计算最终的加速度限制
     max_accel = max_accel_base * min(steering_factor, yaw_factor)
