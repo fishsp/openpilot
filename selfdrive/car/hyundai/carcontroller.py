@@ -125,7 +125,7 @@ class CarController(CarControllerBase):
     self.m_tsc = 0
     self.steady_speed = 0
     self.lead_distance = 0
-    #self.hkg_can_smooth_stop = self.param_s.get_bool("HkgSmoothStop")
+    self.hkg_can_smooth_stop = self.param_s.get_bool("HkgSmoothStop")
     self.accel_eco = self.param_s.get_bool("SubaruManualParkingBrakeSng") #ECO加速模式
     self.cruise_smooth_dis = self.param_s.get_bool("StockLongToyota") #巡航平滑
     self.custom_accel_limit = self.param_s.get_bool("LkasToggle") #用户限制加速度
@@ -470,7 +470,8 @@ class CarController(CarControllerBase):
       #  self.clip_accel = True
 
       # 通过算法对加速度进行平滑
-      accel = self.smooth_accel(accel, speed, DT_CTRL)
+      if self.hkg_can_smooth_stop:
+        accel = self.smooth_accel(accel, speed, DT_CTRL)
 
       self.make_jerk(CS, accel, actuators)
 
