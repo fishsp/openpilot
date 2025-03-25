@@ -84,7 +84,7 @@ class CarController(CarControllerBase):
     self.accel_limit_org = 0.0
     self.normal_log_num = 0
     self.pcmCruiseSpeed_last = False
-    self.log_enable = True  # 是否允许日志记录
+    self.log_enable = False  # 是否允许日志记录
     self.gasPressed = False
     self.gasPressed_last = False
     self.gas_change_smooth = False
