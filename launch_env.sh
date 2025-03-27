@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+export FINGERPRINT="HYUNDAI_SANTA_FE"
+export SKIP_FW_QUERY="1"
+
 export OMP_NUM_THREADS=1
 export MKL_NUM_THREADS=1
 export NUMEXPR_NUM_THREADS=1
