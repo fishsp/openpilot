@@ -1,6 +1,8 @@
 import crcmod
 from opendbc.car.hyundai.values import CAR, HyundaiFlags
 
+from opendbc.sunnypilot.car.hyundai.escc import EnhancedSmartCruiseControl
+
 hyundai_checksum = crcmod.mkCrcFun(0x11D, initCrc=0xFD, rev=False, xorOut=0xdf)
 
 def create_lkas11(packer, frame, CP, apply_torque, steer_req,
@@ -123,7 +125,8 @@ def create_lfahda_mfc(packer, enabled):
   }
   return packer.make_can_msg("LFAHDA_MFC", 0, values)
 
-def create_acc_commands(packer, enabled, accel, upper_jerk, idx, hud_control, set_speed, stopping, long_override, use_fca, CP):
+def create_acc_commands(packer, enabled, accel, upper_jerk, idx, hud_control, set_speed, stopping, long_override, use_fca, CP,
+                        ESCC: EnhancedSmartCruiseControl = None):
   commands = []
 
   scc11_values = {
@@ -152,6 +155,10 @@ def create_acc_commands(packer, enabled, accel, upper_jerk, idx, hud_control, se
   if not use_fca:
     scc12_values["CF_VSM_ConfMode"] = 1
     scc12_values["AEB_Status"] = 1  # AEB disabled
+
+  # Since we have ESCC available, we can update SCC12 with ESCC values.
+  if ESCC and ESCC.enabled:
+    ESCC.update_scc12(scc12_values)
 
   scc12_dat = packer.make_can_msg("SCC12", 0, scc12_values)[1]
   scc12_values["CR_VSM_ChkSum"] = 0x10 - sum(sum(divmod(i, 16)) for i in scc12_dat) % 0x10
@@ -185,7 +192,7 @@ def create_acc_commands(packer, enabled, accel, upper_jerk, idx, hud_control, se
 
   return commands
 
-def create_acc_opt(packer, CP):
+def create_acc_opt(packer, CP, ESCC: EnhancedSmartCruiseControl = None):
   commands = []
 
   scc13_values = {
@@ -194,6 +201,10 @@ def create_acc_opt(packer, CP):
     "Lead_Veh_Dep_Alert_USM": 2,
   }
   commands.append(packer.make_can_msg("SCC13", 0, scc13_values))
+
+  # If ESCC is available and enabled, we skip FCA12, since ESCC does not block FCA12
+  if ESCC and ESCC.enabled:
+    return commands
 
   # TODO: this needs to be detected and conditionally sent on unsupported long cars
   # On Camera SCC cars, FCA12 is not disabled, so we forward stock FCA12 back to the car forward hooks
