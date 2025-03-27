@@ -7,6 +7,8 @@ from opendbc.car.hyundai.values import DBC, HyundaiFlags
 from openpilot.common.params import Params
 from opendbc.car.hyundai.hyundaicanfd import CanBus
 
+from opendbc.sunnypilot.car.hyundai.escc import EsccRadarInterfaceBase
+
 RADAR_START_ADDR = 0x500
 RADAR_MSG_COUNT = 32
 
@@ -32,13 +34,14 @@ def get_radar_can_parser_scc(CP):
     messages = [("SCC11", 50)]
     bus = CAN.ECAN
 
-  print("$$$$$$$$ ECAN = ", CAN.ECAN)    
+  print("$$$$$$$$ ECAN = ", CAN.ECAN)
   bus = CAN.CAM if CP.flags & HyundaiFlags.CAMERA_SCC else bus
   return CANParser(DBC[CP.carFingerprint][Bus.pt], messages, bus)
 
-class RadarInterface(RadarInterfaceBase):
+class RadarInterface(RadarInterfaceBase, EsccRadarInterfaceBase):
   def __init__(self, CP):
     super().__init__(CP)
+    EsccRadarInterfaceBase.__init__(self, CP)
     self.updated_messages = set()
     self.trigger_msg = RADAR_START_ADDR + RADAR_MSG_COUNT - 1
     self.track_id = 0
@@ -48,6 +51,12 @@ class RadarInterface(RadarInterfaceBase):
     self.radar_tracks = Params().get_int("EnableRadarTracks") >= 1
     self.rcp = get_radar_can_parser(CP, self.radar_tracks)
 
+    # If radar tracks are not available and ESCC is enabled, override radar parser with the ESCC parser and trigger message
+    if self.rcp is None and self.ESCC.enabled:
+      self.rcp = self.ESCC.get_radar_can_parser()
+      self.trigger_msg = self.ESCC.trigger_msg
+      self.use_escc = True
+      return
 
     self.canfd = True if CP.flags & HyundaiFlags.CANFD else False
     if not self.radar_tracks:
@@ -79,6 +88,9 @@ class RadarInterface(RadarInterfaceBase):
     if not self.rcp.can_valid:
       errors.append("canError")
     ret.errors = errors
+
+    if self.use_escc:
+      return self.update_escc(ret)
 
     for addr in range(RADAR_START_ADDR, RADAR_START_ADDR + RADAR_MSG_COUNT):
       msg = self.rcp.vl[f"RADAR_TRACK_{addr:x}"]

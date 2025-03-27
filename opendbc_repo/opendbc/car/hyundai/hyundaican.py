@@ -1,6 +1,8 @@
 import crcmod
 from opendbc.car.hyundai.values import CAR, HyundaiFlags
 
+from opendbc.sunnypilot.car.hyundai.escc import EnhancedSmartCruiseControl
+
 hyundai_checksum = crcmod.mkCrcFun(0x11D, initCrc=0xFD, rev=False, xorOut=0xdf)
 
 def create_lkas11(packer, frame, CP, apply_steer, steer_req,
@@ -122,11 +124,12 @@ def create_lfahda_mfc(packer, CC, blinking_signal):
     "HDA_VSetReq": 0, #set_speed_in_units if activeCarrot >= 2 else 0,
     "HDA_USM" : 2,
     "HDA_Icon_Wheel" : 1 if CC.latActive else 0,
-    #"HDA_Chime" : 1 if CC.latActive else 0, # comment for K9 chime, 
+    #"HDA_Chime" : 1 if CC.latActive else 0, # comment for K9 chime,
   }
   return packer.make_can_msg("LFAHDA_MFC", 0, values)
 
-def create_acc_commands_scc(packer, enabled, accel, jerk, idx, hud_control, set_speed, stopping, long_override, use_fca, CS, soft_hold_mode):
+def create_acc_commands_scc(packer, enabled, accel, jerk, idx, hud_control, set_speed, stopping, long_override, use_fca, CS, soft_hold_mode,
+                            ESCC: EnhancedSmartCruiseControl = None):
   from opendbc.car.hyundai.carcontroller import HyundaiJerk
   cruise_available = CS.out.cruiseState.available
   soft_hold_active = CS.softHoldActive
@@ -135,7 +138,7 @@ def create_acc_commands_scc(packer, enabled, accel, jerk, idx, hud_control, set_
   long_enabled = enabled or (soft_hold_active > 0 and soft_hold_mode == 2)
   stop_req = 1 if stopping or (soft_hold_active > 0 and soft_hold_mode == 2) else 0
   d = hud_control.leadDistance
-  objGap = 0 if d == 0 else 2 if d < 25 else 3 if d < 40 else 4 if d < 70 else 5 
+  objGap = 0 if d == 0 else 2 if d < 25 else 3 if d < 40 else 4 if d < 70 else 5
   objGap2 = 0 if objGap == 0 else 2 if hud_control.leadRelSpeed < -0.2 else 1
 
   if long_enabled:
@@ -168,7 +171,7 @@ def create_acc_commands_scc(packer, enabled, accel, jerk, idx, hud_control, set_
     values["ACC_ObjDist"] = int(hud_control.leadDistance)
     values["DriverAlertDisplay"] = 0
     commands.append(packer.make_can_msg("SCC11", 0, values))
-    
+
   if CS.scc12 is not None:
     values = CS.scc12
     values["ACCMode"] = scc12_acc_mode #2 if enabled and long_override else 1 if long_enabled else 0
@@ -216,7 +219,8 @@ def create_acc_commands_scc(packer, enabled, accel, jerk, idx, hud_control, set_
 def create_acc_opt_copy(CS, packer):
   return packer.make_can_msg("SCC13", 0, CS.scc13)
 
-def create_acc_commands(packer, enabled, accel, jerk, idx, hud_control, set_speed, stopping, long_override, use_fca, CP, CS, soft_hold_mode):
+def create_acc_commands(packer, enabled, accel, jerk, idx, hud_control, set_speed, stopping, long_override, use_fca, CP, CS, soft_hold_mode,
+                        ESCC: EnhancedSmartCruiseControl = None):
   from opendbc.car.hyundai.carcontroller import HyundaiJerk
   cruise_available = CS.out.cruiseState.available
   soft_hold_active = CS.softHoldActive
@@ -225,7 +229,7 @@ def create_acc_commands(packer, enabled, accel, jerk, idx, hud_control, set_spee
   long_enabled = enabled or (soft_hold_active > 0 and soft_hold_mode == 2)
   stop_req = 1 if stopping or (soft_hold_active > 0 and soft_hold_mode == 2) else 0
   d = hud_control.leadDistance
-  objGap = 0 if d == 0 else 2 if d < 25 else 3 if d < 40 else 4 if d < 70 else 5 
+  objGap = 0 if d == 0 else 2 if d < 25 else 3 if d < 40 else 4 if d < 70 else 5
   objGap2 = 0 if objGap == 0 else 2 if hud_control.leadRelSpeed < -0.2 else 1
 
   if long_enabled:
@@ -250,7 +254,7 @@ def create_acc_commands(packer, enabled, accel, jerk, idx, hud_control, set_spee
     "TauGapSet": hud_control.leadDistanceBars,
     "VSetDis": set_speed if enabled else 0,
     "AliveCounterACC": idx % 0x10,
-    "SCCInfoDisplay": 3 if warning_front else 4 if soft_hold_info else 0 if enabled else 0,   
+    "SCCInfoDisplay": 3 if warning_front else 4 if soft_hold_info else 0 if enabled else 0,
     "ObjValid": 1 if hud_control.leadVisible else 0, # close lead makes controls tighter
     "ACC_ObjStatus": 1 if hud_control.leadVisible else 0, # close lead makes controls tighter
     "ACC_ObjLatPos": 0,
@@ -274,6 +278,10 @@ def create_acc_commands(packer, enabled, accel, jerk, idx, hud_control, set_spee
   if not use_fca:
     scc12_values["CF_VSM_ConfMode"] = 1
     scc12_values["AEB_Status"] = 1  # AEB disabled
+
+  # Since we have ESCC available, we can update SCC12 with ESCC values.
+  if ESCC and ESCC.enabled:
+    ESCC.update_scc12(scc12_values)
 
   scc12_dat = packer.make_can_msg("SCC12", 0, scc12_values)[1]
   scc12_values["CR_VSM_ChkSum"] = 0x10 - sum(sum(divmod(i, 16)) for i in scc12_dat) % 0x10
@@ -308,23 +316,40 @@ def create_acc_commands(packer, enabled, accel, jerk, idx, hud_control, set_spee
 
   return commands
 
-def create_acc_opt(packer, CP):
+def create_acc_opt(packer, CP, ESCC: EnhancedSmartCruiseControl = None):
+  """
+      Creates SCC13 and FCA12. If ESCC is enabled, it will only create SCC13 since ESCC does not block FCA12.
+      :param packer:
+      :param ESCC:
+      :return:
+    """
+
+  def get_scc13_values():
+    return {
+      "SCCDrvModeRValue": 2,
+      "SCC_Equip": 1,
+      "Lead_Veh_Dep_Alert_USM": 2,
+    }
+
+  def get_fca12_values():
+    return {
+      "FCA_DrvSetState": 2,
+      "FCA_USM": 1,  # AEB disabled
+    }
+
   commands = []
 
-  scc13_values = {
-    "SCCDrvModeRValue": 2,
-    "SCC_Equip": 1,
-    "Lead_Veh_Dep_Alert_USM": 2,
-  }
+  scc13_values = get_scc13_values()
   commands.append(packer.make_can_msg("SCC13", 0, scc13_values))
+
+  # If ESCC is available and enabled, we skip FCA12, since ESCC does not block FCA12
+  if ESCC and ESCC.enabled:
+    return commands
 
   # TODO: this needs to be detected and conditionally sent on unsupported long cars
   # On Camera SCC cars, FCA12 is not disabled, so we forward stock FCA12 back to the car forward hooks
   if not (CP.flags & HyundaiFlags.CAMERA_SCC):
-    fca12_values = {
-      "FCA_DrvSetState": 2,
-      "FCA_USM": 1, # AEB disabled
-    }
+    fca12_values = get_fca12_values()
     commands.append(packer.make_can_msg("FCA12", 0, fca12_values))
 
   return commands

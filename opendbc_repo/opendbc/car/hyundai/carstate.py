@@ -10,6 +10,8 @@ from opendbc.car.hyundai.hyundaicanfd import CanBus
 from opendbc.car.hyundai.values import HyundaiFlags, CAR, DBC, Buttons, CarControllerParams, CAMERA_SCC_CAR, HyundaiExtFlags
 from opendbc.car.interfaces import CarStateBase
 
+from opendbc.sunnypilot.car.hyundai.escc import EsccCarStateBase
+
 from openpilot.common.params import Params
 
 
@@ -24,9 +26,10 @@ BUTTONS_DICT = {Buttons.RES_ACCEL: ButtonType.accelCruise, Buttons.SET_DECEL: Bu
 
 GearShifter = structs.CarState.GearShifter
 
-class CarState(CarStateBase):
+class CarState(CarStateBase, EsccCarStateBase):
   def __init__(self, CP):
     super().__init__(CP)
+    EsccCarStateBase.__init__(self)
     can_define = CANDefine(DBC[CP.carFingerprint][Bus.pt])
 
     self.cruise_buttons: deque = deque([Buttons.NONE] * PREV_BUTTON_SAMPLES, maxlen=PREV_BUTTON_SAMPLES)
@@ -65,7 +68,7 @@ class CarState(CarStateBase):
     self.adrv_info_162 = None
     self.hda_info_4a3 = None
     self.new_msg_4b4 = None
-    
+
     self.cruise_buttons_msg = None
     self.hda2_lfa_block_msg = None
 
@@ -77,7 +80,7 @@ class CarState(CarStateBase):
 
     self.main_enabled = True if Params().get_int("AutoEngage") == 2 else False
     self.gear_shifter = GearShifter.drive # Gear_init for Nexo ?? unknown 21.02.23.LSW
-    
+
     self.totalDistance = 0.0
     self.speedLimitDistance = 0
     self.pcmCruiseGap = 0
@@ -271,7 +274,7 @@ class CarState(CarStateBase):
     vEgoClu, aEgoClu = self.update_clu_speed_kf(ret.vEgoCluster)
     ret.vCluRatio = (ret.vEgo / vEgoClu) if (vEgoClu > 3. and ret.vEgo > 3.) else 1.0
 
-    self.totalDistance += ret.vEgo * DT_CTRL 
+    self.totalDistance += ret.vEgo * DT_CTRL
     #ret.totalDistance = self.totalDistance
 
     if self.CP.extFlags & HyundaiExtFlags.NAVI_CLUSTER.value:
@@ -280,8 +283,8 @@ class CarState(CarStateBase):
       ret.speedLimit = speedLimit if speedLimit < 255 and speedLimitCam == 1 else 0
       if ret.speedLimit>0 and not ret.gasPressed:
         if self.speedLimitDistance <= self.totalDistance:
-          self.speedLimitDistance = self.totalDistance + ret.speedLimit * 6  
-        self.speedLimitDistance = max(self.totalDistance+1, self.speedLimitDistance) 
+          self.speedLimitDistance = self.totalDistance + ret.speedLimit * 6
+        self.speedLimitDistance = max(self.totalDistance+1, self.speedLimitDistance)
       else:
         self.speedLimitDistance = self.totalDistance
       ret.speedLimitDistance = self.speedLimitDistance - self.totalDistance
@@ -347,8 +350,8 @@ class CarState(CarStateBase):
     #ret.steerFaultTemporary = False
 
     # carrot test
-    left_blinker_lamp = cp.vl["BLINKERS"]["LEFT_LAMP"] or cp.vl["BLINKERS"]["LEFT_LAMP_ALT"] 
-    right_blinker_lamp = cp.vl["BLINKERS"]["RIGHT_LAMP"] or cp.vl["BLINKERS"]["RIGHT_LAMP_ALT"] 
+    left_blinker_lamp = cp.vl["BLINKERS"]["LEFT_LAMP"] or cp.vl["BLINKERS"]["LEFT_LAMP_ALT"]
+    right_blinker_lamp = cp.vl["BLINKERS"]["RIGHT_LAMP"] or cp.vl["BLINKERS"]["RIGHT_LAMP_ALT"]
     ret.leftBlinker, ret.rightBlinker = self.update_blinker_from_lamp(50, left_blinker_lamp, right_blinker_lamp)
 
     # TODO: alt signal usage may be described by cp.vl['BLINKERS']['USE_ALT_LAMP']
@@ -427,7 +430,7 @@ class CarState(CarStateBase):
       cruise_button = cp.vl_all[self.cruise_btns_msg_canfd]["CRUISE_BUTTONS"]
     self.cruise_buttons.extend(cruise_button)
     # }} carrot
-    
+
 
     if self.cruise_btns_msg_canfd in cp.vl_all: #carrot
       if not cp.vl_all[self.cruise_btns_msg_canfd]["CRUISE_BUTTONS"]:
@@ -576,7 +579,7 @@ class CarState(CarStateBase):
       ("CGW4", 5),
       ("WHL_SPD11", 50),
       ("SAS11", 100),
-      ("TPMS11", 5), 
+      ("TPMS11", 5),
     ]
     if CP.flags & HyundaiFlags.CC_ONLY_CAR:
       pt_messages.remove(("TCS11", 100))
@@ -613,7 +616,7 @@ class CarState(CarStateBase):
     else:
       pt_messages.append(("LVR12", 100))
       pt_messages.append(("LVR11", 100))
-      
+
     if CP.extFlags & HyundaiExtFlags.HAS_LFA_BUTTON.value:
       pt_messages.append(("BCM_PO_11", 50))
 
@@ -640,7 +643,7 @@ class CarState(CarStateBase):
       if CP.extFlags & HyundaiExtFlags.HAS_SCC14.value:
         cam_messages += [
           ("SCC14", 50),
-        ]      
+        ]
       if CP.flags & HyundaiFlags.USE_FCA.value:
         cam_messages += [
           ("FCA11", 50),
