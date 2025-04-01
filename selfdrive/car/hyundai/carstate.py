@@ -106,7 +106,7 @@ class CarState(CarStateBase):
 
     ret.vEgoCluster = cluSpeed * speed_conv
     vEgoClu, aEgoClu = self.update_clu_speed_kf(ret.vEgoCluster)
-    #ret.vCluRatio = (ret.vEgo / vEgoClu) if (vEgoClu > 3. and ret.vEgo > 3.) else 1.0
+    ret.vCluRatio = (ret.vEgo / vEgoClu) if (vEgoClu > 3. and ret.vEgo > 3.) else 1.0
     if vEgoClu > 3. and ret.vEgo > 3.:
       ret.vEgo = vEgoClu
     # copy from cncp 2025.04.01
