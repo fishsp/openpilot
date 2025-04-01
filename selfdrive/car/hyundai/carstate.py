@@ -97,7 +97,19 @@ class CarState(CarStateBase):
       if not self.is_metric and self.CP.carFingerprint not in (CAR.KIA_SORENTO,):
         self.cluster_speed = math.floor(self.cluster_speed * CV.KPH_TO_MPH + CV.KPH_TO_MPH)
 
-    ret.vEgoCluster = self.cluster_speed * speed_conv
+    #ret.vEgoCluster = self.cluster_speed * speed_conv
+    # copy from cncp 2025.04.01
+    cluSpeed = cp.vl["CLU11"]["CF_Clu_Vanz"]
+    decimal = cp.vl["CLU11"]["CF_Clu_VanzDecimal"]
+    if 0. < decimal < 0.5:
+      cluSpeed += decimal
+
+    ret.vEgoCluster = cluSpeed * speed_conv
+    vEgoClu, aEgoClu = self.update_clu_speed_kf(ret.vEgoCluster)
+    #ret.vCluRatio = (ret.vEgo / vEgoClu) if (vEgoClu > 3. and ret.vEgo > 3.) else 1.0
+    if vEgoClu > 3. and ret.vEgo > 3.:
+      ret.vEgo = vEgoClu
+    # copy from cncp 2025.04.01
 
     ret.steeringAngleDeg = cp.vl["SAS11"]["SAS_Angle"]
     ret.steeringRateDeg = cp.vl["SAS11"]["SAS_Speed"]
