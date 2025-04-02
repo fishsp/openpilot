@@ -6,7 +6,7 @@ import numpy as np
 from openpilot.common.realtime import DT_MDL
 from openpilot.common.conversions import Conversions as CV
 from openpilot.common.filter_simple import StreamingMovingAverage
-from openpilot.selfdrive.selfdrived.events import Events
+from openpilot.selfdrive.controls.lib.events import Events
 
 EventName = log.OnroadEvent.EventName
 LaneChangeState = log.LaneChangeState
