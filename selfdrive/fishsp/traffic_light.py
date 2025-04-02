@@ -8,7 +8,7 @@ from openpilot.common.conversions import Conversions as CV
 from openpilot.common.filter_simple import StreamingMovingAverage
 from openpilot.selfdrive.controls.lib.events import Events
 
-EventName = log.OnroadEvent.EventName
+#EventName = log.OnroadEvent.EventName
 LaneChangeState = log.LaneChangeState
 
 class XState(Enum):
@@ -222,8 +222,8 @@ class CarrotPlanner:
 
     if self.soft_hold_active > 0:
       self.xState = XState.e2eStopped
-      if trafficState_last in [TrafficState.off, TrafficState.red] and self.trafficState == TrafficState.green:
-        self.events.add(EventName.trafficSignChanged)
+      #if trafficState_last in [TrafficState.off, TrafficState.red] and self.trafficState == TrafficState.green:
+        #self.events.add(EventName.trafficSignChanged)
     elif self.xState == XState.e2eStopped:
       if carstate.gasPressed:
         self.xState = XState.e2ePrepare
@@ -232,7 +232,7 @@ class CarrotPlanner:
       elif self.stopping_count == 0:
         if self.trafficState == TrafficState.green and not self.carrot_stay_stop and not carstate.leftBlinker:
           self.xState = XState.e2ePrepare
-          self.events.add(EventName.trafficSignGreen)
+          #self.events.add(EventName.trafficSignGreen)
       self.stopping_count = max(0, self.stopping_count - 1)
       v_cruise = 0
     elif self.xState == XState.e2eStop:
@@ -245,7 +245,7 @@ class CarrotPlanner:
         self.xState = XState.lead
       else:
         if self.trafficState == TrafficState.green:
-          self.events.add(EventName.trafficSignGreen)
+          #self.events.add(EventName.trafficSignGreen)
           self.xState = XState.e2eCruise
         else:
           self.comfort_brake = self.comfortBrake * 0.9
@@ -275,7 +275,7 @@ class CarrotPlanner:
       if lead_detected:
         self.xState = XState.lead
       elif self.trafficState == TrafficState.red and abs(carstate.steeringAngleDeg) < 30 and self.traffic_starting_count == 0:
-        self.events.add(EventName.trafficStopping)
+        #self.events.add(EventName.trafficStopping)
         self.xState = XState.e2eStop
         self.actual_stop_distance = self.xStop
       else:
