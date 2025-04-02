@@ -76,7 +76,7 @@ class CarrotPlanner:
     #self.myEcoModeFactor = 0.9
     #self.mySafeModeFactor = 0.8
     #self.myHighModeFactor = 1.2
-    self.drivingModeDetector = DrivingModeDetector()
+    #self.drivingModeDetector = DrivingModeDetector()
     self.mySafeFactor = 1.0
 
     self.tFollowGap1 = 1.1
@@ -181,16 +181,16 @@ class CarrotPlanner:
     v_ego_cluster = carstate.vEgoCluster
     v_ego_cluster_kph = v_ego_cluster * CV.MS_TO_KPH
 
-    if self.frame % 20 == 0: # every 1 sec
-      vLead = 0
-      aLead = 0
-      dRel = 200
-      if radarstate.leadOne.status:
-        vLead = radarstate.leadOne.vLead * CV.MS_TO_KPH
-        aLead = radarstate.leadOne.aLead
-        dRel = radarstate.leadOne.dRel
+    #if self.frame % 20 == 0: # every 1 sec
+    #  vLead = 0
+    #  aLead = 0
+    #  dRel = 200
+    #  if radarstate.leadOne.status:
+    #    vLead = radarstate.leadOne.vLead * CV.MS_TO_KPH
+    #    aLead = radarstate.leadOne.aLead
+    #    dRel = radarstate.leadOne.dRel
 
-      self.drivingModeDetector.update_data(v_ego_kph, vLead, carstate.aEgo, aLead, dRel)
+    #  self.drivingModeDetector.update_data(v_ego_kph, vLead, carstate.aEgo, aLead, dRel)
 
     #v_cruise_kph = self.cruise_eco_control(v_ego_cluster_kph, v_cruise_kph)
     #v_cruise_kph, atc_active = self._update_carrot_man(sm, v_ego_kph, v_cruise_kph)
@@ -220,81 +220,88 @@ class CarrotPlanner:
     if carstate.gasPressed or carstate.brakePressed:
       self.user_stop_distance = -1
 
-    if self.soft_hold_active > 0:
+    if self.soft_hold_active > 0: #soft_hold_active > 0，则保持 e2eStopped
       self.xState = XState.e2eStopped
       #if trafficState_last in [TrafficState.off, TrafficState.red] and self.trafficState == TrafficState.green:
         #self.events.add(EventName.trafficSignChanged)
-    elif self.xState == XState.e2eStopped:
+    elif self.xState == XState.e2eStopped: #如果处于 e2eStopped（完全停止）
       if carstate.gasPressed:
-        self.xState = XState.e2ePrepare
+        self.xState = XState.e2ePrepare #如果检测到油门输入，进入 e2ePrepare（准备起步）
       elif lead_detected and (radarstate.leadOne.dRel - stop_model_x) < 2.0:
-        self.xState = XState.lead
-      elif self.stopping_count == 0:
+        self.xState = XState.lead #如果检测到前车接近，进入 lead（跟车模式）
+      elif self.stopping_count == 0: #如果信号灯变绿，且没有特殊情况（如 carrot_stay_stop 或左转灯亮），进入 e2ePrepare
         if self.trafficState == TrafficState.green and not self.carrot_stay_stop and not carstate.leftBlinker:
           self.xState = XState.e2ePrepare
           #self.events.add(EventName.trafficSignGreen)
       self.stopping_count = max(0, self.stopping_count - 1)
-      v_cruise = 0
-    elif self.xState == XState.e2eStop:
-      self.stopping_count = 0
+      v_cruise = 0 #巡航速度设置为0
+    elif self.xState == XState.e2eStop: #如果处于 e2eStop（预计停车
+      self.stopping_count = 0 #重新计时 stopping_count = 0
       if carstate.gasPressed:  # Stop detecting traffic signal for 10 seconds
         #self.xState = XState.e2ePrepare
-        self.xState = XState.e2eCruise
-        self.traffic_starting_count = 10.0 / DT_MDL
+        self.xState = XState.e2eCruise #如果驾驶员踩油门，直接进入 e2eCruise（巡航）
+        self.traffic_starting_count = 10.0 / DT_MDL #设置 traffic_starting_count为10秒的计数
       elif lead_detected and (radarstate.leadOne.dRel - stop_model_x) < 2.0:
-        self.xState = XState.lead
+        self.xState = XState.lead #如果检测到前车接近，进入 lead（跟车模式）
       else:
-        if self.trafficState == TrafficState.green:
+        if self.trafficState == TrafficState.green: #如果信号灯变绿，触发 trafficSignGreen 事件，并进入 e2eCruise（巡航）
           #self.events.add(EventName.trafficSignGreen)
           self.xState = XState.e2eCruise
-        else:
-          self.comfort_brake = self.comfortBrake * 0.9
+        else: #非绿灯，进入制动调整逻辑，计算停车距离 stop_dist
+          self.comfort_brake = self.comfortBrake * 0.9 #self.comfortBrake = 2.4
           #self.comfort_brake = COMFORT_BRAKE
-          self.trafficStopAdjustRatio = np.interp(v_ego_kph, [0, 100], [1.0, 0.7])
+          #计算停车距离 stop_dist
+          self.trafficStopAdjustRatio = np.interp(v_ego_kph, [0, 100], [1.0, 0.7]) #根据速度确定比例，trafficStopAdjustRatio: 1km - 1.0, 100km/h - 0.7
           stop_dist = self.xStop * np.interp(self.xStop, [0, 100], [1.0, self.trafficStopAdjustRatio])
           if stop_dist > 10.0:
-            self.actual_stop_distance = stop_dist
+            self.actual_stop_distance = stop_dist #设置实际停车距离为stop_dist
           stop_model_x = 0
           self.fakeCruiseDistance = 0 if self.actual_stop_distance > 10.0 else 10.0
-          if v_ego < 0.3:
-            self.stopping_count = 0.5 / DT_MDL
-            self.xState = XState.e2eStopped
-    elif self.xState == XState.e2ePrepare:
-      if lead_detected:
+          if v_ego < 0.3: #若车速 v_ego < 0.3，则进入 e2eStopped
+            self.stopping_count = 0.5 / DT_MDL #计算停车时间0.5秒对应的次数
+            self.xState = XState.e2eStopped #设置状态为e2eStopped
+    elif self.xState == XState.e2ePrepare: #如果处于 e2ePrepare（准备起步）
+      if lead_detected: #如果前方有车，进入 lead（跟车）
         self.xState = XState.lead
-      elif self.atc_active:
+      elif self.atc_active: #自动转弯激活 且 踩了油门则进入e2eCruise
         if carstate.gasPressed:
           self.xState = XState.e2eCruise
-      elif v_ego_kph < 5.0 and self.trafficState != TrafficState.green:
+      elif v_ego_kph < 5.0 and self.trafficState != TrafficState.green: #如果 车速 < 5km/h 且 交通灯不是绿灯，进入 e2eStop（预计停车）
         self.xState = XState.e2eStop
-        self.actual_stop_distance = 5.0 #2.0
+        self.actual_stop_distance = 5.0 #设置实际停车距离为5米
       elif v_ego_kph > 5.0: # and stop_model_x > 30.0:
-        self.xState = XState.e2eCruise
+        self.xState = XState.e2eCruise #如果 车速 > 5km/h，进入 e2eCruise（巡航）
     else: #XState.lead, XState.cruise, XState.e2eCruise
       self.traffic_starting_count = max(0, self.traffic_starting_count - 1)
-      if lead_detected:
+      if lead_detected: #有前车则进入XState.lead状态
         self.xState = XState.lead
+      #如果红灯且方向盘角度 < 30°，触发 trafficStopping 事件，并进入 e2eStop
       elif self.trafficState == TrafficState.red and abs(carstate.steeringAngleDeg) < 30 and self.traffic_starting_count == 0:
         #self.events.add(EventName.trafficStopping)
         self.xState = XState.e2eStop
         self.actual_stop_distance = self.xStop
-      else:
+      else: #否则，保持 e2eCruise
         self.xState = XState.e2eCruise
 
+    #如果 trafficState 为绿灯或关闭，或者 xState 不是 e2eStop/e2eStopped,则 stop_model_x = 1000.0（表示无需考虑停车）
     if self.trafficState in [TrafficState.off, TrafficState.green] or self.xState not in [XState.e2eStop, XState.e2eStopped]:
       stop_model_x = 1000.0
 
+    #这段代码应该没生效，因为没有看到user_stop_distance可能大于0的情况
     if self.user_stop_distance >= 0:
       self.user_stop_distance = max(0, self.user_stop_distance - v_ego * DT_MDL)
       self.actual_stop_distance = self.user_stop_distance
       self.xState = XState.e2eStop if self.user_stop_distance > 0 else XState.e2eStopped
 
+    # 如果 xState 是 e2ePrepare（准备起步），mode = 'blended', 否则，mode = 'acc'（自适应巡航模式）
     mode = 'blended' if self.xState in [XState.e2ePrepare] else 'acc'
 
-    self.comfort_brake *= self.mySafeFactor
+    self.comfort_brake *= self.mySafeFactor #self.mySafeFactor = 1.0
+
+    #随着车辆前进，逐步减少 actual_stop_distance，v_ego * DT_MDL 表示在一个循环周期内车辆行驶的距离
     self.actual_stop_distance = max(0, self.actual_stop_distance - (v_ego * DT_MDL))
 
-    if stop_model_x == 1000.0: ##  e2eCruise, lead
+    if stop_model_x == 1000.0: ## 说明状态为e2eCruise, lead
       self.actual_stop_distance = 0.0
     elif self.actual_stop_distance > 0: ## e2eStop, e2eStopped
       stop_model_x = 0.0
@@ -308,22 +315,22 @@ class CarrotPlanner:
 
     return v_cruise_kph
 
-class DrivingModeDetector:
-  def __init__(self):
-    self.congested = False
-    self.speed_threshold = 2  # (km/h)
-    self.accel_threshold = 1.5  # (m/s^2)
-    self.distance_threshold = 12  # (m)
-    self.lead_speed_exit_threshold = 20  # (km/h)
+#class DrivingModeDetector:
+#  def __init__(self):
+#    self.congested = False
+#    self.speed_threshold = 2  # (km/h)
+#    self.accel_threshold = 1.5  # (m/s^2)
+#    self.distance_threshold = 12  # (m)
+#    self.lead_speed_exit_threshold = 20  # (km/h)
 
-  def update_data(self, my_speed, lead_speed, my_accel, lead_accel, distance):
-    # 1. 停车条件:前车在附近而停车的情况
-    if distance <= self.distance_threshold and lead_speed <= self.speed_threshold:
-      self.congested = True
-
-    # 2. 行驶条件:前车加速或快速移动
-    if lead_accel > self.accel_threshold or my_speed > self.lead_speed_exit_threshold or distance >= 200:
-      self.congested = False
-
-  def get_mode(self):
-    return DrivingMode.Safe if self.congested else DrivingMode.Normal
+#  def update_data(self, my_speed, lead_speed, my_accel, lead_accel, distance):
+#    # 1. 停车条件:前车在附近而停车的情况
+#    if distance <= self.distance_threshold and lead_speed <= self.speed_threshold:
+#      self.congested = True
+#
+#    # 2. 行驶条件:前车加速或快速移动
+#    if lead_accel > self.accel_threshold or my_speed > self.lead_speed_exit_threshold or distance >= 200:
+#      self.congested = False
+#
+#  def get_mode(self):
+#    return DrivingMode.Safe if self.congested else DrivingMode.Normal
