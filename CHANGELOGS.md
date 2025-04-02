@@ -1,4 +1,4 @@
-sunnypilot - 0.9.8.0 (2024-xx-xx)
+sunnypilot - 0.9.8.0 (2024-11-16)
 ========================
 * Always on driver monitoring toggle
 ************************
