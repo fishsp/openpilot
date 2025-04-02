@@ -99,6 +99,7 @@ class LongitudinalPlanner:
     self.eco = self.params.get_bool("SubaruManualParkingBrakeSng") #斯巴鲁驻车作为eco开关
     self.stock_long_toyota = self.params.get_bool("StockLongToyota")
     self.vCluRatio = 1.0
+    self.v_cruise_kph = 0.0
 
   def read_param(self):
     self.eco = self.params.get_bool("SubaruManualParkingBrakeSng")
@@ -124,7 +125,7 @@ class LongitudinalPlanner:
       j = np.zeros(len(T_IDXS_MPC))
     return x, v, a, j
 
-  def update(self, sm):
+  def update(self, sm, carrot):
     if self.param_read_counter % 50 == 0:
       self.read_param()
     self.param_read_counter += 1
@@ -135,7 +136,12 @@ class LongitudinalPlanner:
 
     v_ego = sm['carState'].vEgo
     v_cruise_kph = min(sm['controlsState'].vCruise, V_CRUISE_MAX)
-    v_cruise = v_cruise_kph * CV.KPH_TO_MS
+    #v_cruise = v_cruise_kph * CV.KPH_TO_MS
+
+    #carrotsp
+    self.v_cruise_kph = carrot.update(sm, v_cruise_kph)
+    self.mpc.mode = carrot.mode
+    v_cruise = self.v_cruise_kph * CV.KPH_TO_MS
 
     #fishsp add 根据仪表速度和车轮速度的比值修改巡航速度
     vCluRatio = sm['carState'].vCluRatio

@@ -11,6 +11,7 @@ from openpilot.selfdrive.controls.lib.lateral_planner import LateralPlanner
 from openpilot.selfdrive.modeld.model_capabilities import ModelCapabilities
 from openpilot.selfdrive.sunnypilot import get_model_generation
 import cereal.messaging as messaging
+from openpilot.selfdrive.fishsp.traffic_light import CarrotPlanner
 
 
 def cumtrapz(x, t):
@@ -58,13 +59,14 @@ def plannerd_thread():
                             'longitudinalPlan', 'navInstruction', 'longitudinalPlanSP',
                             'liveMapDataSP', 'e2eLongStateSP'] + lateral_planner_svs,
                            poll='modelV2', ignore_avg_freq=['radarState'])
+  carrot = CarrotPlanner()
 
   while True:
     sm.update()
     if sm.updated['modelV2']:
       lateral_planner.update(sm)
       lateral_planner.publish(sm, pm)
-      longitudinal_planner.update(sm)
+      longitudinal_planner.update(sm, carrot)
       longitudinal_planner.publish(sm, pm)
       publish_ui_plan(sm, pm, lateral_planner, longitudinal_planner, model_use_lateral_planner)
 
