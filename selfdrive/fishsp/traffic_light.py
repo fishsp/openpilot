@@ -143,9 +143,12 @@ class CarrotPlanner:
     return t_follow
 
   def update_stop_dist(self, stop_x):
-    stop_x = self.xStopFilter.process(stop_x, median = True)
+    stop_x = self.xStopFilter.process(stop_x, median=True)
     stop_x = self.xStopFilter2.process(stop_x)
-    return stop_x + 1.5
+    if self.xState == XState.lead:  # 只在跟车模式下增加停车距离
+        return stop_x + 1.5  # 额外增加1.5m
+    return stop_x
+
 
   def check_model_stopping(self, v, v_ego, a_ego, model_x, y, d_rel):
     v_ego_kph = v_ego * CV.MS_TO_KPH
