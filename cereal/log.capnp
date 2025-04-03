@@ -19,8 +19,9 @@ struct Map(Key, Value) {
 
 enum LongitudinalPersonality {
   aggressive @0;
-  standard @1;
-  relaxed @2;
+  moderate @1;
+  standard @2;
+  relaxed @3;
 }
 
 struct InitData {
