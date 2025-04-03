@@ -165,6 +165,8 @@ class CarrotPlanner:
     self._update_model_desire(sm)
     self.events = Events()
 
+    return v_cruise_kph
+
     carstate = sm['carState']
     vCluRatio = carstate.vCluRatio
     #controlsState = sm['controlsState']

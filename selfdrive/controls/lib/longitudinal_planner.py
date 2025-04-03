@@ -102,6 +102,7 @@ class LongitudinalPlanner:
     self.vCluRatio = 1.0
     self.v_cruise_kph = 0.0
     self.disable_carrot = True
+    self.frame = 0
 
   def read_param(self):
     self.eco = self.params.get_bool("SubaruManualParkingBrakeSng")
@@ -141,6 +142,7 @@ class LongitudinalPlanner:
     v_cruise = v_cruise_kph * CV.KPH_TO_MS
 
     #carrotsp
+    self.v_cruise_kph = carrot.update(sm, v_cruise_kph) #TEST
     if self.disable_carrot:
       self.v_cruise_kph = carrot.update(sm, v_cruise_kph)
       self.mpc.mode = carrot.mode
@@ -230,6 +232,8 @@ class LongitudinalPlanner:
     self.v_desired_filter.x = self.v_desired_filter.x + self.dt * (self.a_desired + a_prev) / 2.0
 
     self.e2e_events(sm)
+
+    self.frame += 1
 
   def publish(self, sm, pm):
     plan_send = messaging.new_message('longitudinalPlan')
