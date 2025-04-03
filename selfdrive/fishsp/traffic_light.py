@@ -114,6 +114,7 @@ class CarrotPlanner:
     self.stop_dist = 0
     self.mode = ""
     self.trafficStopAdjustRatio = 1
+    self.enable = False
 
   def _params_update(self):
     self.frame += 1
@@ -198,25 +199,6 @@ class CarrotPlanner:
     v_ego_kph = v_ego * CV.MS_TO_KPH
     v_ego_cluster = carstate.vEgoCluster
     v_ego_cluster_kph = v_ego_cluster * CV.MS_TO_KPH
-
-    #if self.frame % 20 == 0: # every 1 sec
-    #  vLead = 0
-    #  aLead = 0
-    #  dRel = 200
-    #  if radarstate.leadOne.status:
-    #    vLead = radarstate.leadOne.vLead * CV.MS_TO_KPH
-    #    aLead = radarstate.leadOne.aLead
-    #    dRel = radarstate.leadOne.dRel
-
-    #  self.drivingModeDetector.update_data(v_ego_kph, vLead, carstate.aEgo, aLead, dRel)
-
-    #v_cruise_kph = self.cruise_eco_control(v_ego_cluster_kph, v_cruise_kph)
-    #v_cruise_kph, atc_active = self._update_carrot_man(sm, v_ego_kph, v_cruise_kph)
-
-    #if atc_active and not self.atc_active and self.xState not in [XState.e2eStop, XState.e2eStopped, XState.lead]:
-    #  if self.atcType in ["turn left", "turn right", "atc left", "atc right"]:
-    #    self.xState = XState.e2ePrepare
-    #self.atc_active = atc_active
 
     v_cruise = v_cruise_kph * CV.KPH_TO_MS
     if vCluRatio > 0.5:
@@ -332,7 +314,7 @@ class CarrotPlanner:
     self.stop_dist = stop_dist
     self.mode = mode
 
-    return v_cruise_kph
+    return v_cruise
 
 #class DrivingModeDetector:
 #  def __init__(self):

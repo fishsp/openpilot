@@ -101,7 +101,7 @@ class LongitudinalPlanner:
     self.eco = self.params.get_bool("SubaruManualParkingBrakeSng") #斯巴鲁驻车作为eco开关
     self.stock_long_toyota = self.params.get_bool("StockLongToyota")
     self.vCluRatio = 1.0
-    self.v_cruise_kph = 0.0
+    #self.v_cruise = 0.0
     self.disable_carrot = True
     self.frame = 0
 
@@ -142,22 +142,17 @@ class LongitudinalPlanner:
     v_cruise_kph = min(sm['controlsState'].vCruise, V_CRUISE_MAX)
     v_cruise = v_cruise_kph * CV.KPH_TO_MS
 
-    #carrotsp
-    self.v_cruise_kph = carrot.update(sm, v_cruise_kph)
-    self.mpc.mode = carrot.mode
-    v_cruise = self.v_cruise_kph * CV.KPH_TO_MS
-
-    if self.frame % 4 == 0:
-      print(f"carrot trafficState: {carrot.trafficState} v_cruise_kph: {self.v_cruise_kph}, mode: {self.mpc.mode}, v_cruise: {carrot.v_cruise} stop_dist: {carrot.stop_dist}")
-
-    #fishsp add 根据仪表速度和车轮速度的比值修改巡航速度
-    vCluRatio = sm['carState'].vCluRatio
-    if vCluRatio > 0.5:
-      self.vCluRatio = vCluRatio
-      v_cruise *= vCluRatio
-    #fishsp add
-
-    #v_cruise_initialized = sm['carState'].vCruise != V_CRUISE_UNSET
+    #carrot
+    if not self.disable_carrot: #没有禁用carrot时则调用 carrot.update
+      v_cruise = carrot.update(sm, v_cruise_kph)
+      self.mpc.mode = carrot.mode
+      carrot.enable = True
+    else:
+      carrot.enable = False
+      vCluRatio = sm['carState'].vCluRatio
+      if vCluRatio > 0.5:
+        self.vCluRatio = vCluRatio
+        v_cruise *= vCluRatio
 
     long_control_off = sm['controlsState'].longControlState == LongCtrlState.off
     force_slow_decel = sm['controlsState'].forceDecel
@@ -167,14 +162,14 @@ class LongitudinalPlanner:
 
     #fishsp add
     # PCM cruise speed may be updated a few cycles later, check if initialized
-    #if self.disable_carrot:
-    #  reset_state = reset_state or not v_cruise_initialized or carrot.soft_hold_active
+    v_cruise_initialized = sm['carState'].vCruise != V_CRUISE_UNSET
+    reset_state = reset_state or not v_cruise_initialized or carrot.soft_hold_active
     # fishsp add
 
     # No change cost when user is controlling the speed, or when standstill
     prev_accel_constraint = not (reset_state or sm['carState'].standstill)
 
-    # 使用斯巴鲁驻车来选择ECO加速表
+    # 获取加速度限制
     accel_limits = [A_CRUISE_MIN, get_max_accel(v_ego, self.eco)]
     accel_limits_turns = limit_accel_in_turns(v_ego, sm['carState'].steeringAngleDeg, accel_limits, self.CP)
 
@@ -206,6 +201,10 @@ class LongitudinalPlanner:
     v_cruise = self.cruise_solutions(
       not reset_state and (self.CP.openpilotLongitudinalControl or not self.CP.pcmCruiseSpeed),
       self.v_desired_filter.x, self.a_desired, v_cruise, sm)
+
+    #打印调试信息
+    if self.frame % 4 == 0:
+      print(f"trafficState: {carrot.trafficState} v_cruise: {v_cruise}, mode: {self.mpc.mode}, stop_dist: {carrot.stop_dist}")
 
     # clip limits, cannot init MPC outside of bounds
     accel_limits_turns[0] = min(accel_limits_turns[0], self.a_desired + 0.05)

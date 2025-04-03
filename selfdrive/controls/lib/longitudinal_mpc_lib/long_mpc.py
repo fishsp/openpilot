@@ -393,9 +393,13 @@ class LongitudinalMpc:
     if mode == 'blended':
       stop_x = 1000.0
     else:
-      v_cruise, stop_x, mode = carrot.v_cruise, carrot.stop_dist, carrot.mode
-      desired_distance = carrot_desired_follow_distance(v_ego, radarstate.leadOne.vLead, comfort_brake, stop_distance, t_follow)
-      t_follow = carrot.dynamic_t_follow(t_follow, radarstate.leadOne, desired_distance)
+      #v_cruise, stop_x, mode = carrot.v_cruise, carrot.stop_dist, carrot.mode
+      if carrot.enable:
+        stop_x, mode = carrot.stop_dist, carrot.mode
+        desired_distance = carrot_desired_follow_distance(v_ego, radarstate.leadOne.vLead, comfort_brake, stop_distance, t_follow)
+        t_follow = carrot.dynamic_t_follow(t_follow, radarstate.leadOne, desired_distance)
+      else:
+        stop_x = 1000.0
 
     # To estimate a safe distance from a moving lead, we calculate how much stopping
     # distance that lead needs as a minimum. We can add that to the current distance
@@ -420,42 +424,47 @@ class LongitudinalMpc:
 
     # Update in ACC mode or ACC/e2e blend
     if self.mode == 'acc':
-      #self.params[:,5] = LEAD_DANGER_FACTOR
+      if not carrot.enable:
+        self.params[:, 5] = LEAD_DANGER_FACTOR
 
-      # Fake an obstacle for cruise, this ensures smooth acceleration to set speed
-      # when the leads are no factor.
-      #v_lower = v_ego + (T_IDXS * self.cruise_min_a * 1.05)
-      #v_upper = v_ego + (T_IDXS * self.max_a * 1.05)
-      #v_cruise_clipped = np.clip(v_cruise * np.ones(N+1),
-      #                           v_lower,
-      #                           v_upper)
-      #cruise_obstacle = np.cumsum(T_DIFFS * v_cruise_clipped) + get_safe_obstacle_distance(v_cruise_clipped, t_follow)
-      #x_obstacles = np.column_stack([lead_0_obstacle, lead_1_obstacle, cruise_obstacle])
-      #self.source = SOURCES[np.argmin(x_obstacles[0])]
+        # Fake an obstacle for cruise, this ensures smooth acceleration to set speed
+        # when the leads are no factor.
+        v_lower = v_ego + (T_IDXS * self.cruise_min_a * 1.05)
+        v_upper = v_ego + (T_IDXS * self.max_a * 1.05)
+        v_cruise_clipped = np.clip(v_cruise * np.ones(N + 1),
+                                   v_lower,
+                                   v_upper)
+        cruise_obstacle = np.cumsum(T_DIFFS * v_cruise_clipped) + get_safe_obstacle_distance(v_cruise_clipped, t_follow)
+        x_obstacles = np.column_stack([lead_0_obstacle, lead_1_obstacle, cruise_obstacle])
+        self.source = SOURCES[np.argmin(x_obstacles[0])]
 
-      # These are not used in ACC mode
-      #x[:], v[:], a[:], j[:] = 0.0, 0.0, 0.0, 0.0
+        # These are not used in ACC mode
+        x[:], v[:], a[:], j[:] = 0.0, 0.0, 0.0, 0.0
 
-      #carrot
-      self.params[:, 5] = LEAD_DANGER_FACTOR
-      # Fake an obstacle for cruise, this ensures smooth acceleration to set speed
-      # when the leads are no factor.
-      v_lower = v_ego + (T_IDXS * self.cruise_min_a * 1.05)
-      # TODO does this make sense when max_a is negative?
-      v_upper = v_ego + (T_IDXS * self.max_a * 1.05)
-      v_cruise_clipped = np.clip(v_cruise * np.ones(N + 1), v_lower, v_upper)
-      cruise_obstacle = np.cumsum(T_DIFFS * v_cruise_clipped) + carrot_get_safe_obstacle_distance(v_cruise_clipped, t_follow, comfort_brake, stop_distance)
+      else: #carrot
 
-      adjust_dist = carrot.trafficStopDistanceAdjust if v_ego > 0.1 else -2.0
-      if 50 < stop_x + adjust_dist < cruise_obstacle[0]:
-        stop_x = cruise_obstacle[0] - adjust_dist
-      x2 = stop_x * np.ones(N + 1) + adjust_dist
+        self.params[:, 5] = LEAD_DANGER_FACTOR
+        # Fake an obstacle for cruise, this ensures smooth acceleration to set speed
+        # when the leads are no factor.
+        v_lower = v_ego + (T_IDXS * self.cruise_min_a * 1.05)
+        # TODO does this make sense when max_a is negative?
+        v_upper = v_ego + (T_IDXS * self.max_a * 1.05)
+        v_cruise_clipped = np.clip(v_cruise * np.ones(N + 1), v_lower, v_upper)
+        cruise_obstacle = np.cumsum(T_DIFFS * v_cruise_clipped) + carrot_get_safe_obstacle_distance(v_cruise_clipped,
+                                                                                                    t_follow,
+                                                                                                    comfort_brake,
+                                                                                                    stop_distance)
 
-      x_obstacles = np.column_stack([lead_0_obstacle, lead_1_obstacle, cruise_obstacle, x2])
-      self.source = SOURCES[np.argmin(x_obstacles[0])]
+        adjust_dist = carrot.trafficStopDistanceAdjust if v_ego > 0.1 else -2.0
+        if 50 < stop_x + adjust_dist < cruise_obstacle[0]:
+          stop_x = cruise_obstacle[0] - adjust_dist
+        x2 = stop_x * np.ones(N + 1) + adjust_dist
 
-      # These are not used in ACC mode
-      x[:], v[:], a[:], j[:] = 0.0, 0.0, 0.0, 0.0
+        x_obstacles = np.column_stack([lead_0_obstacle, lead_1_obstacle, cruise_obstacle, x2])
+        self.source = SOURCES[np.argmin(x_obstacles[0])]
+
+        # These are not used in ACC mode
+        x[:], v[:], a[:], j[:] = 0.0, 0.0, 0.0, 0.0
 
     elif self.mode == 'blended':
       self.params[:,5] = 1.0
