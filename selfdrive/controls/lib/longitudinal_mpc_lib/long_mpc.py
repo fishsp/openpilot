@@ -416,11 +416,13 @@ class LongitudinalMpc:
     x_and_cruise_e2ex = np.column_stack([e2e_x, cruise_target_e2ex])
     e2e_x = np.min(x_and_cruise_e2ex, axis=1)
 
-    #self.params[:,0] = ACCEL_MIN
-    #self.params[:,1] = self.max_a
-    self.params[:, 0] = ACCEL_MIN if not reset_state else a_ego
-    # negative accel constraint causes problems because negative speed is not allowed
-    self.params[:, 1] = max(0.0, self.max_a if not reset_state else a_ego)
+    if not carrot.enable:
+      self.params[:,0] = ACCEL_MIN
+      self.params[:,1] = self.max_a
+    else:
+      self.params[:, 0] = ACCEL_MIN if not reset_state else a_ego
+      # negative accel constraint causes problems because negative speed is not allowed
+      self.params[:, 1] = max(0.0, self.max_a if not reset_state else a_ego)
 
     # Update in ACC mode or ACC/e2e blend
     if self.mode == 'acc':
