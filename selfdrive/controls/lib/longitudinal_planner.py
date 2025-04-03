@@ -103,6 +103,7 @@ class LongitudinalPlanner:
     self.turn_speed_controller = TurnSpeedController()
     self.dynamic_experimental_controller = DynamicExperimentalController()
     self.accel_controller = AccelController()
+    self.vCluRatio = 1.0
 
   def read_param(self):
     try:
@@ -142,6 +143,13 @@ class LongitudinalPlanner:
     v_ego = sm['carState'].vEgo
     v_cruise_kph = min(sm['controlsState'].vCruise, V_CRUISE_MAX)
     v_cruise = v_cruise_kph * CV.KPH_TO_MS
+
+    #fishsp add 根据仪表速度和车轮速度的比值修改巡航速度
+    vCluRatio = sm['carState'].vCluRatio
+    if vCluRatio > 0.5:
+      self.vCluRatio = vCluRatio
+      v_cruise *= vCluRatio
+    #fishsp add
 
     long_control_off = sm['controlsState'].longControlState == LongCtrlState.off
     force_slow_decel = sm['controlsState'].forceDecel
