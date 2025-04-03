@@ -102,7 +102,7 @@ class LongitudinalPlanner:
     self.stock_long_toyota = self.params.get_bool("StockLongToyota")
     self.vCluRatio = 1.0
     #self.v_cruise = 0.0
-    self.disable_carrot = True
+    self.disable_carrot = False
     self.frame = 0
 
   def read_param(self):
@@ -162,7 +162,7 @@ class LongitudinalPlanner:
 
     #fishsp add
     # PCM cruise speed may be updated a few cycles later, check if initialized
-    v_cruise_initialized = sm['carState'].vCruise != V_CRUISE_UNSET
+    v_cruise_initialized = sm['controlsState'].vCruise != V_CRUISE_UNSET
     reset_state = reset_state or not v_cruise_initialized or carrot.soft_hold_active
     # fishsp add
 
