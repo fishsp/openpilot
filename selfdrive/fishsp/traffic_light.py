@@ -85,7 +85,7 @@ class CarrotPlanner:
     self.tFollowGap4 = 1.6
 
     self.dynamicTFollow = 0.0
-    self.dynamicTFollowLC = 0.0
+    self.dynamicTFollowLC = 0.9
 
     self.cruiseMaxVals1 = 1.6
     self.cruiseMaxVals2 = 1.2
@@ -127,6 +127,21 @@ class CarrotPlanner:
     else:
       self.desireState = 0.0
 
+  def dynamic_t_follow(self, t_follow, lead, desired_follow_distance):
+
+    self.jerk_factor_apply = self.jerk_factor
+    if self.desireState > 0.9:  # lane change state
+      t_follow *= self.dynamicTFollowLC  # 变更车道时减少t_follow。
+      self.jerk_factor_apply = self.jerk_factor * self.dynamicTFollowLC  # 变更车道时减少jerk factor aggresive
+    elif lead.status:
+      if self.dynamicTFollow > 0.0:
+        gap_dist_adjust = np.clip((desired_follow_distance - lead.dRel) * self.dynamicTFollow, - 0.1, 1.0)
+        t_follow += gap_dist_adjust
+        if gap_dist_adjust < 0:
+          self.jerk_factor_apply = self.jerk_factor * 0.5  # 跟随前方车辆的时候aggressive。
+
+    return t_follow
+
   def update_stop_dist(self, stop_x):
     stop_x = self.xStopFilter.process(stop_x, median = True)
     stop_x = self.xStopFilter2.process(stop_x)
@@ -164,8 +179,6 @@ class CarrotPlanner:
     self._params_update()
     self._update_model_desire(sm)
     self.events = Events()
-
-    return v_cruise_kph
 
     carstate = sm['carState']
     vCluRatio = carstate.vCluRatio

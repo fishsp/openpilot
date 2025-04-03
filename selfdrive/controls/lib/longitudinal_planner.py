@@ -23,6 +23,7 @@ from openpilot.selfdrive.controls.lib.dynamic_experimental_controller import Dyn
 from openpilot.selfdrive.controls.lib.events import Events
 from openpilot.common.swaglog import cloudlog
 from openpilot.selfdrive.controls.lib.drive_helpers import V_CRUISE_MAX, V_CRUISE_UNSET
+from openpilot.selfdrive.fishsp.traffic_light import CarrotPlanner
 
 LON_MPC_STEP = 0.2  # first step is 0.2s
 A_CRUISE_MIN = -2.0 #-1.2
@@ -142,11 +143,12 @@ class LongitudinalPlanner:
     v_cruise = v_cruise_kph * CV.KPH_TO_MS
 
     #carrotsp
-    self.v_cruise_kph = carrot.update(sm, v_cruise_kph) #TEST
-    if self.disable_carrot:
-      self.v_cruise_kph = carrot.update(sm, v_cruise_kph)
-      self.mpc.mode = carrot.mode
-      v_cruise = self.v_cruise_kph * CV.KPH_TO_MS
+    self.v_cruise_kph = carrot.update(sm, v_cruise_kph)
+    self.mpc.mode = carrot.mode
+    v_cruise = self.v_cruise_kph * CV.KPH_TO_MS
+
+    if self.frame % 4 == 0:
+      print(f"carrot trafficState: {carrot.trafficState} v_cruise_kph: {self.v_cruise_kph}, mode: {self.mpc.mode}, v_cruise: {carrot.v_cruise} stop_dist: {carrot.stop_dist}")
 
     #fishsp add 根据仪表速度和车轮速度的比值修改巡航速度
     vCluRatio = sm['carState'].vCluRatio
@@ -188,9 +190,8 @@ class LongitudinalPlanner:
       # Clip aEgo to cruise limits to prevent large accelerations when becoming active
       self.a_desired = clip(sm['carState'].aEgo, accel_limits[0], accel_limits[1])
 
-      if self.disable_carrot:
-        self.mpc.prev_a = np.full(N + 1, self.a_desired)  ## carrot
-        accel_limits_turns[0] = accel_limits_turns[0] = 0.0  ## carrot
+      self.mpc.prev_a = np.full(N + 1, self.a_desired)  ## carrot
+      accel_limits_turns[0] = accel_limits_turns[0] = 0.0  ## carrot
 
     # Prevent divergence, smooth in current v_ego
     self.v_desired_filter.x = max(0.0, self.v_desired_filter.update(v_ego))
@@ -213,7 +214,7 @@ class LongitudinalPlanner:
     self.mpc.set_weights(prev_accel_constraint, personality=sm['controlsState'].personality)
     self.mpc.set_accel_limits(accel_limits_turns[0], accel_limits_turns[1])
     self.mpc.set_cur_state(self.v_desired_filter.x, self.a_desired)
-    self.mpc.update(sm['radarState'], v_cruise, x, v, a, j, personality=sm['controlsState'].personality)
+    self.mpc.update(carrot, reset_state, sm['radarState'], v_cruise, x, v, a, j, personality=sm['controlsState'].personality)
 
     self.v_desired_trajectory_full = np.interp(ModelConstants.T_IDXS, T_IDXS_MPC, self.mpc.v_solution)
     self.a_desired_trajectory_full = np.interp(ModelConstants.T_IDXS, T_IDXS_MPC, self.mpc.a_solution)
