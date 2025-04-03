@@ -101,7 +101,7 @@ class LongitudinalPlanner:
     self.eco = self.params.get_bool("SubaruManualParkingBrakeSng") #斯巴鲁驻车作为eco开关
     self.stock_long_toyota = self.params.get_bool("StockLongToyota")
     self.vCluRatio = 1.0
-    #self.v_cruise = 0.0
+    self.v_cruise_kph = 0.0
     self.disable_carrot = False
     self.frame = 0
 
@@ -204,7 +204,7 @@ class LongitudinalPlanner:
 
     #打印调试信息
     if self.frame % 4 == 0:
-      print(f"trafficState: {carrot.trafficState} v_cruise: {v_cruise}, mode: {self.mpc.mode}, stop_dist: {carrot.stop_dist}")
+      print(f"trafficState: {carrot.trafficState} v_cruise: {v_cruise*MS_TO_KPH}, mode: {self.mpc.mode}, stop_dist: {carrot.stop_dist}")
 
     # clip limits, cannot init MPC outside of bounds
     accel_limits_turns[0] = min(accel_limits_turns[0], self.a_desired + 0.05)
