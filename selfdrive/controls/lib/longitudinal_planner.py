@@ -204,7 +204,8 @@ class LongitudinalPlanner:
 
     #打印调试信息
     if self.frame % 4 == 0:
-      print(f"trafficState: {carrot.trafficState} v_cruise: {v_cruise*MS_TO_KPH}, mode: {self.mpc.mode}, stop_dist: {carrot.stop_dist}")
+      v_cruise_kph_show = v_cruise*MS_TO_KPH
+      print(f"trafficState: {carrot.trafficState} v_cruise: {v_cruise_kph_show}, mode: {self.mpc.mode}, stop_dist: {carrot.stop_dist}")
 
     # clip limits, cannot init MPC outside of bounds
     accel_limits_turns[0] = min(accel_limits_turns[0], self.a_desired + 0.05)
