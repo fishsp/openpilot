@@ -198,14 +198,19 @@ class LongitudinalPlanner:
       v_cruise = 0.0
 
     # Get active solutions for custom long mpc.
-    v_cruise = self.cruise_solutions(
+    v_cruise_limit = self.cruise_solutions(
       not reset_state and (self.CP.openpilotLongitudinalControl or not self.CP.pcmCruiseSpeed),
       self.v_desired_filter.x, self.a_desired, v_cruise, sm)
 
+    v_cruise_org = v_cruise
+    v_cruise =min(v_cruise_limit, v_cruise)
+
     #打印调试信息
     if self.frame % 4 == 0:
-      v_cruise_kph_show = v_cruise*CV.MS_TO_KPH
-      print(f"trafficState: {carrot.trafficState} v_cruise: {v_cruise_kph_show}, mode: {self.mpc.mode}, stop_dist: {carrot.stop_dist}")
+      v_cruise_org_kph_show = v_cruise_org*CV.MS_TO_KPH
+      v_cruise_limit_kph_show = v_cruise_limit * CV.MS_TO_KPH
+      print(f"traffic: {carrot.trafficState}, mode: {self.mpc.mode}, xState: {carrot.xState}")
+      print(f"v_cruise: {v_cruise_org_kph_show:.2f}, v_cruise_limit: {v_cruise_limit_kph_show:.2f}, dist: {carrot.stop_dist:.2f}")
 
     # clip limits, cannot init MPC outside of bounds
     accel_limits_turns[0] = min(accel_limits_turns[0], self.a_desired + 0.05)
