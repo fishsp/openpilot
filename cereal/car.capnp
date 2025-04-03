@@ -248,6 +248,9 @@ struct CarState {
   endToEndLong @60 :Bool;
   customStockLong @61 :CustomStockLong;
 
+  # fishsp add
+  vCluRatio @62 :Float32;
+
   struct CustomStockLong {
     cruiseButton @0 :Int16;
     finalSpeedKph @1 :Float32;
