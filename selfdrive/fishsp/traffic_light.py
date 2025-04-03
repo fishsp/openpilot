@@ -147,7 +147,7 @@ class CarrotPlanner:
     stop_x = self.xStopFilter.process(stop_x, median=True)
     stop_x = self.xStopFilter2.process(stop_x)
     if self.xState == XState.lead:  # 只在跟车模式下增加停车距离
-        return stop_x + 1.5  # 额外增加1.5m
+        return stop_x + 2.0  # 额外增加1.5m
     return stop_x
 
 
@@ -158,7 +158,7 @@ class CarrotPlanner:
 
     if v_ego_kph < 1.0:
       stopSign = model_x < 20.0 and model_v < 10.0
-    elif v_ego_kph < 82.0:
+    elif v_ego_kph < 85.0:
       stopSign = (model_x < d_rel - 3.0 and
                   model_x < np.interp(v[0], [60/3.6, 80/3.6], [120.0, 150]) and
                   ((model_v < 3.0) or (model_v < v[0]*0.7)) and
@@ -227,7 +227,7 @@ class CarrotPlanner:
     elif self.xState == XState.e2eStopped: #如果处于 e2eStopped（完全停止）
       if carstate.gasPressed:
         self.xState = XState.e2ePrepare #如果检测到油门输入，进入 e2ePrepare（准备起步）
-      elif lead_detected and (radarstate.leadOne.dRel - stop_model_x) < 3.5:
+      elif lead_detected and (radarstate.leadOne.dRel - stop_model_x) < 4.0:
         self.xState = XState.lead #如果检测到前车接近，进入 lead（跟车模式）
       elif self.stopping_count == 0: #如果信号灯变绿，且没有特殊情况（如 carrot_stay_stop 或左转灯亮），进入 e2ePrepare
         if self.trafficState == TrafficState.green and not self.carrot_stay_stop and not carstate.leftBlinker:
@@ -241,7 +241,7 @@ class CarrotPlanner:
         #self.xState = XState.e2ePrepare
         self.xState = XState.e2eCruise #如果驾驶员踩油门，直接进入 e2eCruise（巡航）
         self.traffic_starting_count = 10.0 / DT_MDL #设置 traffic_starting_count为10秒的计数
-      elif lead_detected and (radarstate.leadOne.dRel - stop_model_x) < 3.5:
+      elif lead_detected and (radarstate.leadOne.dRel - stop_model_x) < 4.0:
         self.xState = XState.lead #如果检测到前车接近，进入 lead（跟车模式）
       else:
         if self.trafficState == TrafficState.green: #如果信号灯变绿，触发 trafficSignGreen 事件，并进入 e2eCruise（巡航）
