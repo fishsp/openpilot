@@ -163,6 +163,9 @@ struct CarEvent @0x9b1657f34caf3ad3 {
     brakeUnavailableDEPRECATED @2;
     plannerErrorDEPRECATED @32;
     gpsMalfunctionDEPRECATED @94;
+
+    trafficMode @150;
+    nonTrafficMode @151;
   }
 }
 
@@ -247,6 +250,8 @@ struct CarState {
 
   # fishsp add
   vCluRatio @61 :Float32;
+  trafficChange @62 :Bool;
+  trafficMode @63 :Bool;
 
   struct CustomStockLong {
     cruiseButton @0 :Int16;

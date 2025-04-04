@@ -457,6 +457,22 @@ EVENTS: dict[int, dict[str, Alert | AlertCallbackType]] = {
       Priority.LOW, VisualAlert.steerRequired, AudibleAlert.prompt, 1.8),
   },
 
+  EventName.trafficMode: {
+    ET.PERMANENT: Alert(
+      "红绿灯ACC模式",
+      "",
+      AlertStatus.normal, AlertSize.small,
+      Priority.LOW, VisualAlert.none, AudibleAlert.none, .1),
+  },
+
+EventName.nonTrafficMode: {
+    ET.PERMANENT: Alert(
+      "普通模式",
+      "",
+      AlertStatus.normal, AlertSize.small,
+      Priority.LOW, VisualAlert.none, AudibleAlert.none, .1),
+  },
+
   EventName.preDriverDistracted: {
     ET.PERMANENT: Alert(
       "请注意！专心驾驶",

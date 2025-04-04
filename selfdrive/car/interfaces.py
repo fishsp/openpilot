@@ -246,6 +246,8 @@ class CarInterfaceBase(ABC):
     self.gap_button_counter = 0
     self.experimental_mode_hold = False
     self.experimental_mode = self.param_s.get_bool("ExperimentalMode")
+    self.traffic_mode = self.param_s.get_bool("TrafficMode")
+    self.traffic_mode_prev = self.traffic_mode
     self._frame = 0
     self.reverse_dm_cam = self.param_s.get_bool("ReverseDmCam")
     self.mads_main_toggle = self.param_s.get_bool("MadsCruiseMain")
@@ -458,6 +460,14 @@ class CarInterfaceBase(ABC):
                            enable_buttons=(ButtonType.accelCruise, ButtonType.decelCruise)):
     events = Events()
 
+    # fishsp add
+    if cs_out.trafficChange:
+      if cs_out.trafficMode:
+        events.add(EventName.trafficMode)
+      else:
+        events.add(EventName.nonTrafficMode)
+    # fishsp add
+
     if cs_out.doorOpen and (c.latActive or c.longActive):
       events.add(EventName.doorOpen)
     if cs_out.seatbeltUnlatched and cs_out.gearShifter != GearShifter.park:
@@ -629,6 +639,13 @@ class CarInterfaceBase(ABC):
     if self.CP.openpilotLongitudinalControl:
       self.toggle_exp_mode(gap_button)
 
+    if self.traffic_mode != self.traffic_mode_prev:
+      self.traffic_mode_prev = self.traffic_mode
+      cs_out.trafficChange = True
+    else:
+      cs_out.trafficChange = False
+    cs_out.trafficMode = self.traffic_mode
+
     lane_change_speed_min = get_min_lateral_speed(self.pause_lateral_speed, self.is_metric)
 
     cs_out.belowLaneChangeSpeed = cs_out.vEgo < lane_change_speed_min and self.below_speed_pause
@@ -664,7 +681,8 @@ class CarInterfaceBase(ABC):
         if self.gap_button_counter > 50:
           self.gap_button_counter = 0
           self.experimental_mode_hold = True
-          self.param_s.put_bool_nonblocking("ExperimentalMode", not self.experimental_mode)
+          #self.param_s.put_bool_nonblocking("ExperimentalMode", not self.experimental_mode)
+          self.param_s.put_bool_nonblocking("TrafficMode", not self.traffic_mode) #修改为切换红绿类模式
     else:
       self.gap_button_counter = 0
       self.experimental_mode_hold = False
@@ -737,6 +755,7 @@ class CarInterfaceBase(ABC):
       self.is_metric = self.param_s.get_bool("IsMetric")
       self.below_speed_pause = self.param_s.get_bool("BelowSpeedPause")
       self.pause_lateral_speed = int(self.param_s.get("PauseLateralSpeed", encoding="utf8"))
+      self.traffic_mode = self.param_s.get_bool("TrafficMode")
     if self._frame % 300 == 0:
       self._frame = 0
       self.reverse_dm_cam = self.param_s.get_bool("ReverseDmCam")
