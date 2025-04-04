@@ -462,7 +462,7 @@ EVENTS: dict[int, dict[str, Alert | AlertCallbackType]] = {
       "红绿灯ACC模式",
       "",
       AlertStatus.normal, AlertSize.small,
-      Priority.LOW, VisualAlert.none, AudibleAlert.none, .1),
+      Priority.LOW, VisualAlert.none, AudibleAlert.none, 1.0),
   },
 
 EventName.nonTrafficModeEvt: {
@@ -470,7 +470,7 @@ EventName.nonTrafficModeEvt: {
       "普通模式",
       "",
       AlertStatus.normal, AlertSize.small,
-      Priority.LOW, VisualAlert.none, AudibleAlert.none, .1),
+      Priority.LOW, VisualAlert.none, AudibleAlert.none, 1.0),
   },
 
   EventName.preDriverDistracted: {
