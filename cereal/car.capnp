@@ -164,8 +164,8 @@ struct CarEvent @0x9b1657f34caf3ad3 {
     plannerErrorDEPRECATED @32;
     gpsMalfunctionDEPRECATED @94;
 
-    trafficMode @141;
-    nonTrafficMode @142;
+    trafficModeEvt @141;
+    nonTrafficModeEvt @142;
   }
 }
 

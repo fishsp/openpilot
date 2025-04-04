@@ -457,7 +457,7 @@ EVENTS: dict[int, dict[str, Alert | AlertCallbackType]] = {
       Priority.LOW, VisualAlert.steerRequired, AudibleAlert.prompt, 1.8),
   },
 
-  EventName.trafficMode: {
+  EventName.trafficModeEvt: {
     ET.PERMANENT: Alert(
       "红绿灯ACC模式",
       "",
@@ -465,7 +465,7 @@ EVENTS: dict[int, dict[str, Alert | AlertCallbackType]] = {
       Priority.LOW, VisualAlert.none, AudibleAlert.none, .1),
   },
 
-EventName.nonTrafficMode: {
+EventName.nonTrafficModeEvt: {
     ET.PERMANENT: Alert(
       "普通模式",
       "",

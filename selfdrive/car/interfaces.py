@@ -463,9 +463,9 @@ class CarInterfaceBase(ABC):
     # fishsp add
     if cs_out.trafficChange:
       if cs_out.trafficMode:
-        events.add(EventName.trafficMode)
+        events.add(EventName.trafficModeEvt)
       else:
-        events.add(EventName.nonTrafficMode)
+        events.add(EventName.nonTrafficModeEvt)
     # fishsp add
 
     if cs_out.doorOpen and (c.latActive or c.longActive):
