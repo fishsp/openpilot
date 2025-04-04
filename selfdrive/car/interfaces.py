@@ -246,7 +246,7 @@ class CarInterfaceBase(ABC):
     self.gap_button_counter = 0
     self.experimental_mode_hold = False
     self.experimental_mode = self.param_s.get_bool("ExperimentalMode")
-    self.traffic_mode = self.param_s.get_bool("TrafficMode")
+    self.traffic_mode = False
     self.traffic_mode_prev = self.traffic_mode
     self._frame = 0
     self.reverse_dm_cam = self.param_s.get_bool("ReverseDmCam")
@@ -682,7 +682,8 @@ class CarInterfaceBase(ABC):
           self.gap_button_counter = 0
           self.experimental_mode_hold = True
           #self.param_s.put_bool_nonblocking("ExperimentalMode", not self.experimental_mode)
-          self.param_s.put_bool_nonblocking("TrafficMode", not self.traffic_mode) #修改为切换红绿类模式
+          #self.param_s.put_bool_nonblocking("TrafficMode", not self.traffic_mode) #修改为切换红绿类模式
+          self.traffic_mode = not self.traffic_mode
     else:
       self.gap_button_counter = 0
       self.experimental_mode_hold = False
@@ -755,7 +756,6 @@ class CarInterfaceBase(ABC):
       self.is_metric = self.param_s.get_bool("IsMetric")
       self.below_speed_pause = self.param_s.get_bool("BelowSpeedPause")
       self.pause_lateral_speed = int(self.param_s.get("PauseLateralSpeed", encoding="utf8"))
-      self.traffic_mode = self.param_s.get_bool("TrafficMode")
     if self._frame % 300 == 0:
       self._frame = 0
       self.reverse_dm_cam = self.param_s.get_bool("ReverseDmCam")
