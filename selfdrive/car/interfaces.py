@@ -645,6 +645,7 @@ class CarInterfaceBase(ABC):
     else:
       cs_out.trafficChange = False
     cs_out.trafficMode = self.traffic_mode
+    CS.trafficMode = self.traffic_mode
 
     lane_change_speed_min = get_min_lateral_speed(self.pause_lateral_speed, self.is_metric)
 

@@ -142,6 +142,9 @@ class LongitudinalPlanner:
     v_cruise_kph = min(sm['controlsState'].vCruise, V_CRUISE_MAX)
     v_cruise = v_cruise_kph * CV.KPH_TO_MS
 
+    trafficMode = sm['carState'].trafficMode
+    self.disable_carrot = not trafficMode
+
     #carrot
     if not self.disable_carrot: #没有禁用carrot时则调用 carrot.update
       v_cruise = carrot.update(sm, v_cruise_kph)
