@@ -40,6 +40,7 @@ V_EGO_COST = 0.
 A_EGO_COST = 0.
 J_EGO_COST = 5.0
 A_CHANGE_COST = 250. #200.
+A_CHANGE_COST_STARTING = 100.
 DANGER_ZONE_COST = 100.
 CRASH_DISTANCE = .25
 LEAD_DANGER_FACTOR = 0.75
@@ -84,34 +85,16 @@ def get_T_FOLLOW(personality=custom.LongitudinalPersonalitySP.standard):
   else:
     raise NotImplementedError("Longitudinal personality not supported")
 
-# Last updated: September 29, 2024
-def get_dynamic_personality(v_ego, personality=custom.LongitudinalPersonalitySP.standard):
-  if personality==custom.LongitudinalPersonalitySP.relaxed:
-    x_vel =  [0,    14.,   27.7]
-    y_dist = [1.75, 1.75,  2.50]
-  elif personality==custom.LongitudinalPersonalitySP.standard:
-    x_vel =  [0,    14.,   27.7]
-    y_dist = [1.25, 1.45,  1.75]
-  elif personality==custom.LongitudinalPersonalitySP.moderate:
-    x_vel =  [0,    14.,   27.7]
-    y_dist = [1.0,  1.25,  1.50]
-  elif personality==custom.LongitudinalPersonalitySP.aggressive:
-    x_vel =  [0,    14.,   27.7]
-    y_dist = [0.6,  0.8,   1.0]
-  else:
-    raise NotImplementedError("Dynamic personality not supported")
-  return np.interp(v_ego, x_vel, y_dist)
-
 def get_stopped_equivalence_factor(v_lead):
   return (v_lead**2) / (2 * COMFORT_BRAKE)
 
 def get_safe_obstacle_distance(v_ego, t_follow):
   return (v_ego**2) / (2 * COMFORT_BRAKE) + t_follow * v_ego + STOP_DISTANCE
 
-def desired_follow_distance(v_ego, v_lead, t_follow=None):
-  if t_follow is None:
-    t_follow = get_T_FOLLOW()
-  return get_safe_obstacle_distance(v_ego, t_follow) - get_stopped_equivalence_factor(v_lead)
+#def desired_follow_distance(v_ego, v_lead, t_follow=None):
+#  if t_follow is None:
+#    t_follow = get_T_FOLLOW()
+#  return get_safe_obstacle_distance(v_ego, t_follow) - get_stopped_equivalence_factor(v_lead)
 
 def carrot_get_safe_obstacle_distance(v_ego, t_follow=None, comfort_brake=COMFORT_BRAKE, stop_distance=STOP_DISTANCE):
   if t_follow is None:
@@ -217,7 +200,7 @@ def gen_long_ocp():
 
   x0 = np.zeros(X_DIM)
   ocp.constraints.x0 = x0
-  ocp.parameter_values = np.array([-1.2, 1.2, 0.0, 0.0, get_T_FOLLOW(), LEAD_DANGER_FACTOR])
+  ocp.parameter_values = np.array([-1.2, 1.2, 0.0, 0.0, lead_t_follow, LEAD_DANGER_FACTOR, comfort_brake, stop_distance])
 
 
   # We put all constraint cost weights to 0 and only set them at runtime
@@ -317,7 +300,7 @@ class LongitudinalMpc:
   def set_weights(self, prev_accel_constraint=True, personality=custom.LongitudinalPersonalitySP.standard):
     jerk_factor = get_jerk_factor(personality)
     if self.mode == 'acc':
-      a_change_cost = A_CHANGE_COST if prev_accel_constraint else 0
+      a_change_cost = A_CHANGE_COST if prev_accel_constraint else A_CHANGE_COST_STARTING
       cost_weights = [X_EGO_OBSTACLE_COST, X_EGO_COST, V_EGO_COST, A_EGO_COST, jerk_factor * a_change_cost, jerk_factor * J_EGO_COST]
       constraint_cost_weights = [LIMIT_COST, LIMIT_COST, LIMIT_COST, DANGER_ZONE_COST]
     elif self.mode == 'blended':
@@ -348,7 +331,7 @@ class LongitudinalMpc:
     v_ego = self.x0[1]
     if lead is not None and lead.status:
       x_lead = lead.dRel
-      v_lead = lead.vLead
+      v_lead = lead.vLeadK
       a_lead = lead.aLeadK
       a_lead_tau = lead.aLeadTau
     else:
@@ -374,10 +357,9 @@ class LongitudinalMpc:
     self.max_a = max_a
 
   def update(self, carrot, reset_state, radarstate, v_cruise, x, v, a, j, personality=custom.LongitudinalPersonalitySP.standard):
-    #t_follow = get_T_FOLLOW(personality)
+    t_follow = get_T_FOLLOW(personality)
     v_ego = self.x0[1]
     a_ego = self.x0[2]
-    t_follow = get_dynamic_personality(v_ego, personality)
     self.status = radarstate.leadOne.status or radarstate.leadTwo.status
 
     #if self.frame % 100 == 0:
@@ -513,9 +495,9 @@ class LongitudinalMpc:
     # Check if it got within lead comfort range
     # TODO This should be done cleaner
     if self.mode == 'blended':
-      if any((lead_0_obstacle - get_safe_obstacle_distance(self.x_sol[:,1], t_follow))- self.x_sol[:,0] < 0.0):
+      if any((lead_0_obstacle - carrot_get_safe_obstacle_distance(self.x_sol[:,1], t_follow, comfort_brake, stop_distance))- self.x_sol[:,0] < 0.0):
         self.source = 'lead0'
-      if any((lead_1_obstacle - get_safe_obstacle_distance(self.x_sol[:,1], t_follow))- self.x_sol[:,0] < 0.0) and \
+      if any((lead_1_obstacle - carrot_get_safe_obstacle_distance(self.x_sol[:,1], t_follow, comfort_brake, stop_distance))- self.x_sol[:,0] < 0.0) and \
          (lead_1_obstacle[0] - lead_0_obstacle[0]):
         self.source = 'lead1'
 
