@@ -246,7 +246,7 @@ class CarInterfaceBase(ABC):
     self.gap_button_counter = 0
     self.experimental_mode_hold = False
     self.experimental_mode = self.param_s.get_bool("ExperimentalMode")
-    self.traffic_mode = False
+    self.traffic_mode = True #默认红绿灯模式
     self.traffic_mode_prev = self.traffic_mode
     self._frame = 0
     self.reverse_dm_cam = self.param_s.get_bool("ReverseDmCam")
