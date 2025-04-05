@@ -115,7 +115,8 @@ class CarrotPlanner:
     self.mode = ""
     self.trafficStopAdjustRatio = 1
     self.enable = False
-    self.no_lead_start_request = False
+    self.blended_request = False
+    self.blended_count = 0
 
   def _params_update(self):
     self.frame += 1
@@ -234,7 +235,6 @@ class CarrotPlanner:
     if carstate.gasPressed or carstate.brakePressed:
       self.user_stop_distance = -1
 
-    blended_mode = False
     if self.soft_hold_active > 0: #soft_hold_active > 0，则保持 e2eStopped
       self.xState = XState.e2eStopped
       #if trafficState_last in [TrafficState.off, TrafficState.red] and self.trafficState == TrafficState.green:
@@ -247,16 +247,26 @@ class CarrotPlanner:
       elif self.stopping_count == 0: #如果信号灯变绿，且没有特殊情况（如 carrot_stay_stop 或左转灯亮），进入 e2ePrepare
         if self.trafficState == TrafficState.green and not self.carrot_stay_stop and not carstate.leftBlinker:
           self.xState = XState.e2ePrepare
+          self.blended_request = False
           #self.events.add(EventName.trafficSignGreen)
-        elif not lead_detected and carstate.standstill: #没有前车并且车辆静止时
-          blended_mode = True
-          self.no_lead_start_request = True
-          self.xState = XState.e2ePrepare
+        elif carstate.standstill: #车辆静止时
+          if not lead_detected: #没有前车
+            self.blended_count = 3.0 / DT_MDL #计算3.0秒对应的周期次数
+            self.blended_request = True
+        elif self.blended_request:
+          if v_ego_kph > 6.0: #大于6km/h时(即车辆开始启动)，开始倒计时3秒，倒计时结束时进入e2ePrepare状态
+            if self.blended_count == 0:
+              self.xState = XState.e2ePrepare
+              self.blended_request = False
+            self.blended_count = max(0, self.blended_count - 1) #倒计时
+          else:
+            self.blended_count = 3.0 / DT_MDL  # 计算3.0秒对应的周期次数
       self.stopping_count = max(0, self.stopping_count - 1)
       v_cruise = 0 #巡航速度设置为0
     elif self.xState == XState.e2eStop: #如果处于 e2eStop（预计停车
       self.stopping_count = 0 #重新计时 stopping_count = 0
-      self.no_lead_start_request = False
+      self.blended_count = 0 #blended模式计数
+      self.blended_request = False
       if carstate.gasPressed:  # Stop detecting traffic signal for 10 seconds
         self.xState = XState.e2eCruise #如果驾驶员踩油门，直接进入 e2eCruise（巡航）
         self.traffic_starting_count = 10.0 / DT_MDL #设置 traffic_starting_count为10秒的计数
@@ -267,8 +277,8 @@ class CarrotPlanner:
           #self.events.add(EventName.trafficSignGreen)
           self.xState = XState.e2eCruise
         else: #非绿灯，进入制动调整逻辑，计算停车距离 stop_dist
-          #self.comfort_brake = self.comfortBrake * 0.9 #self.comfortBrake = 2.4
-          self.comfort_brake = self.comfortBrake
+          self.comfort_brake = self.comfortBrake * 0.9 #self.comfortBrake = 2.4
+          #self.comfort_brake = self.comfortBrake
           #self.comfort_brake = COMFORT_BRAKE
           #计算停车距离 stop_dist
           self.trafficStopAdjustRatio = np.interp(v_ego_kph, [0, 100], [1.0, 0.7]) #根据速度确定比例，trafficStopAdjustRatio: 1km - 1.0, 100km/h - 0.7
@@ -287,15 +297,13 @@ class CarrotPlanner:
         if carstate.gasPressed:
           self.xState = XState.e2eCruise
       elif v_ego_kph < 5.0 and self.trafficState != TrafficState.green: #如果 车速 < 5km/h 且 交通灯不是绿灯，进入 e2eStop（预计停车）
-        #如果是我们主动进入 prepare 的，就不再回退
-        if not getattr(self, 'no_lead_start_request', False):
-          self.xState = XState.e2eStop
-          self.actual_stop_distance = 5.0 #设置实际停车距离为5米
+        self.xState = XState.e2eStop
+        self.actual_stop_distance = 5.0 #设置实际停车距离为5米
       elif v_ego_kph > 5.0: # and stop_model_x > 30.0:
         self.xState = XState.e2eCruise #如果 车速 > 5km/h，进入 e2eCruise（巡航）
-        self.no_lead_start_request = False
+        self.blended_request = False
     else: #XState.lead, XState.cruise, XState.e2eCruise
-      self.no_lead_start_request = False
+      self.blended_request = False
       self.traffic_starting_count = max(0, self.traffic_starting_count - 1)
       if lead_detected: #有前车则进入XState.lead状态
         self.xState = XState.lead
@@ -318,7 +326,7 @@ class CarrotPlanner:
       self.xState = XState.e2eStop if self.user_stop_distance > 0 else XState.e2eStopped
 
     # 如果 xState 是 e2ePrepare（准备起步），mode = 'blended', 否则，mode = 'acc'（自适应巡航模式）
-    mode = 'blended' if self.xState in [XState.e2ePrepare] else 'acc'
+    mode = 'blended' if (self.xState in [XState.e2ePrepare]) or self.blended_request else 'acc'
 
     self.comfort_brake *= self.mySafeFactor #self.mySafeFactor = 1.0
 
