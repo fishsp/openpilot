@@ -120,10 +120,25 @@ class CarrotPlanner:
     self.frame += 1
     self.params_count += 1
 
+  # meta.desireState 是什么？
+  # meta.desireState 是一个长度为8的数组，表示 E2E 模型预测的各种“驾驶意图”的概率分布。
+  # 这些意图是 OpenPilot 中定义的 8 个“Desire”，其顺序如下（来自 selfdrive/modeld/constants.py）：
+  # 索引	意图名称	含义
+  # 0	none	没有特定意图
+  # 1	keepLeft	保持偏左行驶
+  # 2	keepRight	保持偏右行驶
+  # 3	laneChangeLeft	准备或正在向左变道
+  # 4	laneChangeRight	准备或正在向右变道
+  # 5	turnLeft	准备或正在左转（路口）
+  # 6	turnRight	准备或正在右转（路口）
+  # 7	uturnLeft	准备或正在掉头
   def _update_model_desire(self, sm):
     meta = sm['modelV2'].meta
     carState = sm['carState']
     if meta.laneChangeState == LaneChangeState.laneChangeStarting: # laneChangig
+      #如果你打了左转向灯，就去取 laneChangeLeft 的置信度（索引3）
+      #如果你打了右转向灯，就取 laneChangeRight 的置信度（索引4）
+      #这值通常是 0.0 ~ 1.0 之间的浮点数，代表“模型有多确定当前需要变道”，值越大说明变道意图很强
       self.desireState = meta.desireState[3] if carState.leftBlinker else meta.desireState[4]
     else:
       self.desireState = 0.0
@@ -131,7 +146,7 @@ class CarrotPlanner:
   def dynamic_t_follow(self, t_follow, lead, desired_follow_distance):
 
     self.jerk_factor_apply = self.jerk_factor
-    if self.desireState > 0.9:  # lane change state
+    if self.desireState > 0.9:  # lane change state, desireState > 0.9说明模型变道意图强
       t_follow *= self.dynamicTFollowLC  # 变更车道时减少t_follow。
       self.jerk_factor_apply = self.jerk_factor * self.dynamicTFollowLC  # 变更车道时减少jerk factor aggresive
     elif lead.status:
@@ -238,7 +253,6 @@ class CarrotPlanner:
     elif self.xState == XState.e2eStop: #如果处于 e2eStop（预计停车
       self.stopping_count = 0 #重新计时 stopping_count = 0
       if carstate.gasPressed:  # Stop detecting traffic signal for 10 seconds
-        #self.xState = XState.e2ePrepare
         self.xState = XState.e2eCruise #如果驾驶员踩油门，直接进入 e2eCruise（巡航）
         self.traffic_starting_count = 10.0 / DT_MDL #设置 traffic_starting_count为10秒的计数
       elif lead_detected and (radarstate.leadOne.dRel - stop_model_x) < 2.0:
