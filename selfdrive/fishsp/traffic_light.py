@@ -8,8 +8,6 @@ from openpilot.common.conversions import Conversions as CV
 from openpilot.common.filter_simple import StreamingMovingAverage
 from openpilot.selfdrive.controls.lib.events import Events
 
-from tinygrad_repo.extra.onnx_ops import Floor
-
 #EventName = log.OnroadEvent.EventName
 LaneChangeState = log.LaneChangeState
 
