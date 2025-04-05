@@ -104,6 +104,8 @@ class LongitudinalPlanner:
     self.v_cruise_kph = 0.0
     self.disable_carrot = False
     self.frame = 0
+    self.is_turning = False
+    self.turn_score = 0.0
 
   def read_param(self):
     self.eco = self.params.get_bool("SubaruManualParkingBrakeSng")
@@ -129,6 +131,47 @@ class LongitudinalPlanner:
       j = np.zeros(len(T_IDXS_MPC))
     return x, v, a, j
 
+  # 返回值score 取值	含义
+  # ≈ 0.0	基本直线
+  # ≈ 0.3	有点弯（轻微变道/小曲线）
+  # > 0.5	明显弯道，建议进入 blended 模式或减速
+  # > 0.7	急转弯，高速进入风险高，需要强处理
+  def compute_turn_score(model, heading_thresh_rad=0.1, lateral_offset_thresh=1.5):
+    x = np.array(model.position.x)
+    y = np.array(model.position.y)
+
+    dt = DT_MDL
+    max_time = len(x) * dt
+    desired_time_steps = [0.5, 1.0, 1.5, 2.0]
+    time_steps = [t for t in desired_time_steps if t < max_time]
+
+    turn_score = 0.0
+    max_offset = 0.0
+    max_heading = 0.0
+    is_turning = False
+
+    for t in time_steps:
+      idx = int(t / dt)
+      dx = x[idx] - x[0]
+      dy = y[idx] - y[0]
+      heading_change = np.arctan2(dy, dx)
+      lateral_offset = abs(y[idx])
+
+      max_offset = max(max_offset, lateral_offset)
+      max_heading = max(max_heading, abs(heading_change))
+
+      if abs(heading_change) > heading_thresh_rad or lateral_offset > lateral_offset_thresh:
+        score = min(1.0, (abs(heading_change) / heading_thresh_rad + lateral_offset / lateral_offset_thresh) * 0.5)
+        turn_score = max(turn_score, score)
+        is_turning = True
+
+    return {
+      'score': np.clip(turn_score, 0.0, 1.0),
+      'is_turning': is_turning,
+      'max_heading_change': max_heading,
+      'max_lateral_offset': max_offset,
+    }
+
   def update(self, sm, carrot):
     if self.param_read_counter % 50 == 0:
       self.read_param()
@@ -142,8 +185,23 @@ class LongitudinalPlanner:
     v_cruise_kph = min(sm['controlsState'].vCruise, V_CRUISE_MAX)
     v_cruise = v_cruise_kph * CV.KPH_TO_MS
 
+    #trafficMode表示红绿灯模式，红绿灯模式时开启carrot功能
     trafficMode = sm['carState'].trafficMode
     self.disable_carrot = not trafficMode
+
+    # === 新增：判断是否即将转弯 ===
+    model = sm['modelV2']
+    turn_info = self.compute_turn_score(model)
+    self.is_turning = turn_info['is_turning']
+    self.turn_score = turn_info['score']
+
+    if self.is_turning:
+      print(f"[LongPlanner] turn_score: {self.turn_score:.2f}, heading_change: {np.degrees(turn_info['max_heading_change']):.1f}°, lateral_offset: {turn_info['max_lateral_offset']:.2f}m")
+
+      # 转弯评分大为0.4时，切换为 blended 模式
+      if self.turn_score > 0.4:
+        self.disable_carrot = True #转弯时关闭carrot功能，切换到sp的DEC自动模式
+    # === 新增：判断是否即将转弯 ===
 
     #carrot
     if not self.disable_carrot: #没有禁用carrot时则调用 carrot.update
