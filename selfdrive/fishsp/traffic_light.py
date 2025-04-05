@@ -8,6 +8,8 @@ from openpilot.common.conversions import Conversions as CV
 from openpilot.common.filter_simple import StreamingMovingAverage
 from openpilot.selfdrive.controls.lib.events import Events
 
+from tinygrad_repo.extra.onnx_ops import Floor
+
 #EventName = log.OnroadEvent.EventName
 LaneChangeState = log.LaneChangeState
 
@@ -115,6 +117,7 @@ class CarrotPlanner:
     self.mode = ""
     self.trafficStopAdjustRatio = 1
     self.enable = False
+    self.no_lead_start_request = False
 
   def _params_update(self):
     self.frame += 1
@@ -235,6 +238,7 @@ class CarrotPlanner:
     if carstate.gasPressed or carstate.brakePressed:
       self.user_stop_distance = -1
 
+    blended_mode = False
     if self.soft_hold_active > 0: #soft_hold_active > 0，则保持 e2eStopped
       self.xState = XState.e2eStopped
       #if trafficState_last in [TrafficState.off, TrafficState.red] and self.trafficState == TrafficState.green:
@@ -248,10 +252,15 @@ class CarrotPlanner:
         if self.trafficState == TrafficState.green and not self.carrot_stay_stop and not carstate.leftBlinker:
           self.xState = XState.e2ePrepare
           #self.events.add(EventName.trafficSignGreen)
+        elif not lead_detected and carstate.standstill: #没有前车并且车辆静止时
+          blended_mode = True
+          self.no_lead_start_request = True
+          self.xState = XState.e2ePrepare
       self.stopping_count = max(0, self.stopping_count - 1)
       v_cruise = 0 #巡航速度设置为0
     elif self.xState == XState.e2eStop: #如果处于 e2eStop（预计停车
       self.stopping_count = 0 #重新计时 stopping_count = 0
+      self.no_lead_start_request = False
       if carstate.gasPressed:  # Stop detecting traffic signal for 10 seconds
         self.xState = XState.e2eCruise #如果驾驶员踩油门，直接进入 e2eCruise（巡航）
         self.traffic_starting_count = 10.0 / DT_MDL #设置 traffic_starting_count为10秒的计数
@@ -282,11 +291,15 @@ class CarrotPlanner:
         if carstate.gasPressed:
           self.xState = XState.e2eCruise
       elif v_ego_kph < 5.0 and self.trafficState != TrafficState.green: #如果 车速 < 5km/h 且 交通灯不是绿灯，进入 e2eStop（预计停车）
-        self.xState = XState.e2eStop
-        self.actual_stop_distance = 5.0 #设置实际停车距离为5米
+        #如果是我们主动进入 prepare 的，就不再回退
+        if not getattr(self, 'no_lead_start_request', False):
+          self.xState = XState.e2eStop
+          self.actual_stop_distance = 5.0 #设置实际停车距离为5米
       elif v_ego_kph > 5.0: # and stop_model_x > 30.0:
         self.xState = XState.e2eCruise #如果 车速 > 5km/h，进入 e2eCruise（巡航）
+        self.no_lead_start_request = False
     else: #XState.lead, XState.cruise, XState.e2eCruise
+      self.no_lead_start_request = False
       self.traffic_starting_count = max(0, self.traffic_starting_count - 1)
       if lead_detected: #有前车则进入XState.lead状态
         self.xState = XState.lead
