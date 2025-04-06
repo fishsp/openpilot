@@ -117,6 +117,7 @@ class CarrotPlanner:
     self.enable = False
     self.blended_request = False
     self.blended_count = 0
+    self.standstill_count = 0
 
   def _params_update(self):
     self.frame += 1
@@ -254,21 +255,21 @@ class CarrotPlanner:
           #self.events.add(EventName.trafficSignGreen)
         elif carstate.standstill: #车辆静止时
           if not lead_detected: #没有前车
-            self.blended_count = 3.0 / DT_MDL #计算3.0秒对应的周期次数
-            self.blended_request = True
-        elif self.blended_request:
-          if v_ego_kph > 6.0: #大于6km/h时(即车辆开始启动)，开始倒计时3秒，倒计时结束时进入e2ePrepare状态
-            if self.blended_count == 0:
-              self.xState = XState.e2ePrepare
-              self.blended_request = False
-            self.blended_count = max(0, self.blended_count - 1) #倒计时
+            if self.standstill_count == 0:
+              self.blended_count = 3.0 / DT_MDL #计算3.0秒对应的周期次数
+              self.blended_request = True
+            self.standstill_count = max(0, self.standstill_count - 1)  # 倒计时
           else:
-            self.blended_count = 3.0 / DT_MDL  # 计算3.0秒对应的周期次数
+            self.standstill_count = 0
+            self.blended_count = 0
+        else:
+          self.standstill_count = 2.0 / DT_MDL
       self.stopping_count = max(0, self.stopping_count - 1)
       v_cruise = 0 #巡航速度设置为0
     elif self.xState == XState.e2eStop: #如果处于 e2eStop（预计停车
       self.stopping_count = 0 #重新计时 stopping_count = 0
       self.blended_count = 0 #blended模式计数
+      self.standstill_count = 0
       self.blended_request = False
       if carstate.gasPressed:  # Stop detecting traffic signal for 10 seconds
         self.xState = XState.e2eCruise #如果驾驶员踩油门，直接进入 e2eCruise（巡航）
@@ -293,6 +294,7 @@ class CarrotPlanner:
           if v_ego < 0.3: #若车速 v_ego < 0.3，则进入 e2eStopped
             self.stopping_count = 0.5 / DT_MDL #计算停车时间0.5秒对应的次数
             self.xState = XState.e2eStopped #设置状态为e2eStopped
+            self.standstill_count = 2.0 / DT_MDL
     elif self.xState == XState.e2ePrepare: #如果处于 e2ePrepare（准备起步）
       if lead_detected: #如果前方有车，进入 lead（跟车）
         self.xState = XState.lead

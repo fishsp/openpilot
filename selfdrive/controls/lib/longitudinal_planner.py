@@ -229,14 +229,14 @@ class LongitudinalPlanner:
             carrot.enable = True
           else:
             carrot.enable = False
-            #carrot.update(sm, v_cruise_kph, True)
+            carrot.update(sm, v_cruise_kph, True)
           carrot.blended_count = max(0, carrot.blended_count - 1)  # 倒计时
         else:
           carrot.enable = False
-          #carrot.update(sm, v_cruise_kph, True)
+          carrot.update(sm, v_cruise_kph, True)
     else:
       carrot.enable = False
-      #carrot.update(sm, v_cruise_kph, True)
+      carrot.update(sm, v_cruise_kph, True)
 
     if not carrot.enable and calib_v_cruise:
       vCluRatio = sm['carState'].vCluRatio
