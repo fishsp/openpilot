@@ -23,7 +23,7 @@ from openpilot.selfdrive.controls.lib.dynamic_experimental_controller import Dyn
 from openpilot.selfdrive.controls.lib.events import Events
 from openpilot.common.swaglog import cloudlog
 from openpilot.selfdrive.controls.lib.drive_helpers import V_CRUISE_MAX, V_CRUISE_UNSET
-from openpilot.selfdrive.fishsp.traffic_light import CarrotPlanner
+from openpilot.selfdrive.fishsp.traffic_light import CarrotPlanner, XState
 
 LON_MPC_STEP = 0.2  # first step is 0.2s
 A_CRUISE_MIN = -2.0 #-1.2
@@ -186,6 +186,7 @@ class LongitudinalPlanner:
     v_ego = sm['carState'].vEgo
     v_cruise_kph = min(sm['controlsState'].vCruise, V_CRUISE_MAX)
     v_cruise = v_cruise_kph * CV.KPH_TO_MS
+    v_ego_kph = v_ego * CV.MS_TO_KPH
 
     #trafficMode表示红绿灯模式，红绿灯模式时开启carrot功能
     trafficMode = sm['carState'].trafficMode
@@ -207,14 +208,34 @@ class LongitudinalPlanner:
     # === 新增：判断是否即将转弯 ===
 
     #carrot
-    if not self.disable_carrot: #没有禁用carrot时则调用 carrot.update
-      v_cruise = carrot.update(sm, v_cruise_kph)
-      if not carrot.blended_request: #如果在carrot中没有强制切换到blended模式，则便能carrot和使用carrot的mode
-        self.mpc.mode = carrot.mode
-        carrot.enable = True
-      else: #carrot在红车停车后切换到baended模式，则禁止carrot控制
-        carrot.enable = False
+    if not self.disable_carrot: #没有禁用carrot时
+      if not carrot.blended_request: #无blended请求时
+        v_cruise = carrot.update(sm, v_cruise_kph, False)
+        if not carrot.blended_request:
+          self.mpc.mode = carrot.mode
+          carrot.enable = True
+        else: #carrot在红车停车后切换到baended模式，则禁止carrot控制
+          carrot.enable = False
+      else:
+        if v_ego_kph > 6.0: #大于6km/h超过倒计时时间(3.0秒)后切换到carrot控制
+          if carrot.blended_count == 0:
+            carrot.xState = XState.e2ePrepare
+            carrot.blended_request = False
+            v_cruise = carrot.update(sm, v_cruise_kph, False)
+            self.mpc.mode = carrot.mode
+            carrot.enable = True
+          else:
+            carrot.enable = False
+            carrot.update(sm, v_cruise_kph, True)
+          carrot.blended_count = max(0, carrot.blended_count - 1)  # 倒计时
+        else:
+          carrot.enable = False
+          carrot.update(sm, v_cruise_kph, True)
     else:
+      carrot.enable = False
+      carrot.update(sm, v_cruise_kph, True)
+
+    if carrot.enable:
       carrot.enable = False
       vCluRatio = sm['carState'].vCluRatio
       if vCluRatio > 0.5:

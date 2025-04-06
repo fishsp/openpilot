@@ -194,7 +194,7 @@ class CarrotPlanner:
     else:
       self.trafficState = TrafficState.off
 
-  def update(self, sm, v_cruise_kph):
+  def update(self, sm, v_cruise_kph, skip_state_machine):
     self._params_update()
     self._update_model_desire(sm)
     self.events = Events()
@@ -228,6 +228,9 @@ class CarrotPlanner:
 
     self.xStop = self.update_stop_dist(x[31])
     stop_model_x = self.xStop
+
+    if skip_state_machine:
+      return
 
     trafficState_last = self.trafficState
     self.check_model_stopping(v, v_ego, a_ego, x[-1], y, radarstate.leadOne.dRel if lead_detected else 1000)
