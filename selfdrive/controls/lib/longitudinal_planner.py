@@ -209,8 +209,11 @@ class LongitudinalPlanner:
     #carrot
     if not self.disable_carrot: #没有禁用carrot时则调用 carrot.update
       v_cruise = carrot.update(sm, v_cruise_kph)
-      self.mpc.mode = carrot.mode
-      carrot.enable = True
+      if not carrot.blended_request: #如果在carrot中没有强制切换到blended模式，则便能carrot和使用carrot的mode
+        self.mpc.mode = carrot.mode
+        carrot.enable = True
+      else: #carrot在红车停车后切换到baended模式，则禁止carrot控制
+        carrot.enable = False
     else:
       carrot.enable = False
       vCluRatio = sm['carState'].vCluRatio
