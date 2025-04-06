@@ -192,6 +192,9 @@ class LongitudinalPlanner:
     trafficMode = sm['carState'].trafficMode
     self.disable_carrot = not trafficMode
 
+    if not self.CS.cruiseState.enabled:
+      self.disable_carrot = True
+
     # === 新增：判断是否即将转弯 ===
     if self.turn_enable:
       model = sm['modelV2']
