@@ -141,13 +141,12 @@ class LongitudinalPlanner:
     else:
       x = np.zeros(len(T_IDXS_MPC))
       y = np.zeros(len(T_IDXS_MPC))
-
-    return {
-      'score': 0,
-      'is_turning': False,
-      'max_heading_change': 0,
-      'max_lateral_offset': 0,
-    }
+      return {
+        'score': 0,
+        'is_turning': False,
+        'max_heading_change': 0,
+        'max_lateral_offset': 0,
+      }
 
     if len(x) != len(y):
       return {
@@ -157,7 +156,8 @@ class LongitudinalPlanner:
         'max_lateral_offset': 0,
       }
 
-    max_time = len(x) * ModelConstants.DT_MDL
+    dt = DT_MDL
+    max_time = len(x) * dt
     desired_time_steps = [0.5, 1.0, 1.5, 1.65]
     time_steps = [t for t in desired_time_steps if t < max_time]
 
@@ -215,15 +215,15 @@ class LongitudinalPlanner:
     if self.turn_enable:
       model = sm['modelV2']
       turn_info = self.compute_turn_score(model)
-      #self.is_turning = turn_info['is_turning']
-      #self.turn_score = turn_info['score']
+      self.is_turning = turn_info['is_turning']
+      self.turn_score = turn_info['score']
 
-      #if self.is_turning:
-      #  print(f"[LongPlanner] turn_score: {self.turn_score:.2f}, heading_change: {np.degrees(turn_info['max_heading_change']):.1f}°, lateral_offset: {turn_info['max_lateral_offset']:.2f}m")
+      if self.is_turning:
+        print(f"[Turn] score: {self.turn_score:.2f}, heading_change: {np.degrees(turn_info['max_heading_change']):.1f}°, lateral_offset: {turn_info['max_lateral_offset']:.2f}m")
 
         # 转弯评分大为0.4时，切换为 blended 模式
-      #  if self.turn_score > 0.4:
-      #    self.disable_carrot = True  # 转弯时关闭carrot功能，切换到sp的DEC自动模式
+        if self.turn_score > 0.4:
+          self.disable_carrot = True  # 转弯时关闭carrot功能，切换到sp的DEC自动模式
     # === 新增：判断是否即将转弯 ===
 
     #carrot
@@ -318,8 +318,8 @@ class LongitudinalPlanner:
     if self.frame % 4 == 0:
       v_cruise_org_kph_show = v_cruise_org*CV.MS_TO_KPH
       v_cruise_limit_kph_show = v_cruise_limit * CV.MS_TO_KPH
-      print(f"traffic: {carrot.trafficState}, mode: {self.mpc.mode}, xState: {carrot.xState}")
-      print(f"v_cruise: {v_cruise_org_kph_show:.2f}, v_cruise_limit: {v_cruise_limit_kph_show:.2f}, dist: {carrot.stop_dist:.2f}")
+      #print(f"traffic: {carrot.trafficState}, mode: {self.mpc.mode}, xState: {carrot.xState}")
+      #print(f"v_cruise: {v_cruise_org_kph_show:.2f}, v_cruise_limit: {v_cruise_limit_kph_show:.2f}, dist: {carrot.stop_dist:.2f}")
 
     # clip limits, cannot init MPC outside of bounds
     accel_limits_turns[0] = min(accel_limits_turns[0], self.a_desired + 0.05)
