@@ -142,6 +142,13 @@ class LongitudinalPlanner:
       x = np.zeros(len(T_IDXS_MPC))
       y = np.zeros(len(T_IDXS_MPC))
 
+    return {
+      'score': 0,
+      'is_turning': False,
+      'max_heading_change': 0,
+      'max_lateral_offset': 0,
+    }
+
     if len(x) != len(y):
       return {
         'score': 0,
@@ -208,15 +215,15 @@ class LongitudinalPlanner:
     if self.turn_enable:
       model = sm['modelV2']
       turn_info = self.compute_turn_score(model)
-      self.is_turning = turn_info['is_turning']
-      self.turn_score = turn_info['score']
+      #self.is_turning = turn_info['is_turning']
+      #self.turn_score = turn_info['score']
 
-      if self.is_turning:
-        print(f"[LongPlanner] turn_score: {self.turn_score:.2f}, heading_change: {np.degrees(turn_info['max_heading_change']):.1f}°, lateral_offset: {turn_info['max_lateral_offset']:.2f}m")
+      #if self.is_turning:
+      #  print(f"[LongPlanner] turn_score: {self.turn_score:.2f}, heading_change: {np.degrees(turn_info['max_heading_change']):.1f}°, lateral_offset: {turn_info['max_lateral_offset']:.2f}m")
 
         # 转弯评分大为0.4时，切换为 blended 模式
-        if self.turn_score > 0.4:
-          self.disable_carrot = True  # 转弯时关闭carrot功能，切换到sp的DEC自动模式
+      #  if self.turn_score > 0.4:
+      #    self.disable_carrot = True  # 转弯时关闭carrot功能，切换到sp的DEC自动模式
     # === 新增：判断是否即将转弯 ===
 
     #carrot
