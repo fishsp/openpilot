@@ -10,6 +10,7 @@ from openpilot.selfdrive.controls.lib.longitudinal_planner import LongitudinalPl
 from openpilot.selfdrive.controls.lib.lateral_planner import LateralPlanner
 from openpilot.selfdrive.modeld.custom_model_metadata import CustomModelMetadata, ModelCapabilities
 import cereal.messaging as messaging
+from openpilot.selfdrive.fishsp.traffic_light import CarrotPlanner
 
 
 def plannerd_thread():
@@ -34,13 +35,14 @@ def plannerd_thread():
                             'longitudinalPlan', 'navInstruction', 'longitudinalPlanSP',
                             'liveMapDataSP', 'e2eLongStateSP', 'controlsStateSP', 'driverMonitoringState'] + lateral_planner_svs,
                            poll='modelV2', ignore_avg_freq=['radarState'])
+  carrot = CarrotPlanner()
 
   while True:
     sm.update()
     if sm.updated['modelV2']:
       lateral_planner.update(sm)
       lateral_planner.publish(sm, pm)
-      longitudinal_planner.update(sm)
+      longitudinal_planner.update(sm, carrot)
       longitudinal_planner.publish(sm, pm)
 
 
