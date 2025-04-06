@@ -106,6 +106,7 @@ class LongitudinalPlanner:
     self.frame = 0
     self.is_turning = False
     self.turn_score = 0.0
+    self.turn_enable = False
 
   def read_param(self):
     self.eco = self.params.get_bool("SubaruManualParkingBrakeSng")
@@ -191,17 +192,18 @@ class LongitudinalPlanner:
     self.disable_carrot = not trafficMode
 
     # === 新增：判断是否即将转弯 ===
-    model = sm['modelV2']
-    turn_info = self.compute_turn_score(model)
-    self.is_turning = turn_info['is_turning']
-    self.turn_score = turn_info['score']
+    if self.turn_enable:
+      model = sm['modelV2']
+      turn_info = self.compute_turn_score(model)
+      self.is_turning = turn_info['is_turning']
+      self.turn_score = turn_info['score']
 
-    if self.is_turning:
-      print(f"[LongPlanner] turn_score: {self.turn_score:.2f}")
+      if self.is_turning:
+        print(f"[LongPlanner] turn_score: {self.turn_score:.2f}")
 
-      # 转弯评分大为10时，切换为 blended 模式
-      if self.turn_score > 10:
-        self.disable_carrot = True #转弯时关闭carrot功能，切换到sp的DEC自动模式
+        # 转弯评分大为10时，切换为 blended 模式
+        if self.turn_score > 10:
+          self.disable_carrot = True #转弯时关闭carrot功能，切换到sp的DEC自动模式
     # === 新增：判断是否即将转弯 ===
 
     #carrot
