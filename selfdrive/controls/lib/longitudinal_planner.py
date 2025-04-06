@@ -208,9 +208,11 @@ class LongitudinalPlanner:
     # === 新增：判断是否即将转弯 ===
 
     #carrot
+    calib_v_cruise = True
     if not self.disable_carrot: #没有禁用carrot时
       if not carrot.blended_request: #无blended请求时
         v_cruise = carrot.update(sm, v_cruise_kph, False)
+        calib_v_cruise = False
         if not carrot.blended_request:
           self.mpc.mode = carrot.mode
           carrot.enable = True
@@ -222,6 +224,7 @@ class LongitudinalPlanner:
             carrot.xState = XState.e2ePrepare
             carrot.blended_request = False
             v_cruise = carrot.update(sm, v_cruise_kph, False)
+            calib_v_cruise = False
             self.mpc.mode = carrot.mode
             carrot.enable = True
           else:
@@ -235,8 +238,7 @@ class LongitudinalPlanner:
       carrot.enable = False
       carrot.update(sm, v_cruise_kph, True)
 
-    if carrot.enable:
-      carrot.enable = False
+    if not carrot.enable and calib_v_cruise:
       vCluRatio = sm['carState'].vCluRatio
       if vCluRatio > 0.5:
         self.vCluRatio = vCluRatio
