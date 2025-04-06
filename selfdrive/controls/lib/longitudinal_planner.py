@@ -132,47 +132,54 @@ class LongitudinalPlanner:
       j = np.zeros(len(T_IDXS_MPC))
     return x, v, a, j
 
-  def compute_turn_score(self, model):
-    # 获取当前位置、速度、加速度、推力矩数据
-    x, v, a, j = self.parse_model(model, self.v_model_error)
-
-    # 确保这些数据的长度是符合预期的
-    if len(x) != len(v) or len(x) != len(a) or len(x) != len(j):
-        print("Warning: Model data arrays have inconsistent lengths.")
-        return 0.0  # 如果数据不一致，直接返回一个默认值
-
-    # 计算转弯得分
-    time_steps = [0.5, 1.0, 1.5, 2.0]  # 你想预测的时间点
-    max_time = len(x) * ModelConstants.DT_MDL  # 预测数据的最大时间
-    time_steps = [t for t in time_steps if t < max_time]  # 只使用可用的时间点
-    turn_score = 0.0
-
-    # 根据模型数据进行得分计算
-    for t in time_steps:
-        # 使用 np.interp 进行插值获取精确的数据
-        x_interp = np.interp(t, ModelConstants.T_IDXS, x)
-        v_interp = np.interp(t, ModelConstants.T_IDXS, v)
-        a_interp = np.interp(t, ModelConstants.T_IDXS, a)
-
-        # 使用插值后的数据计算转弯得分
-        dx = x_interp - x[0]
-        dy = v_interp - v[0]
-        heading_change = np.arctan2(dy, dx)
-        lateral_offset = np.abs(dx)  # 以横向偏移来简化
-
-        # 综合考虑偏移量和角度变化来计算得分
-        turn_score += np.abs(heading_change) + lateral_offset
-
-        # 确保计算结果不会过大或过小
-        turn_score = min(turn_score, 100.0)
-        turn_score = max(turn_score, 0.0)
-
-    # 设置转弯阈值
-    turning_threshold = 10.0  # 你可以根据实际情况调整这个值
-    if turn_score > turning_threshold:
-        return {"score": turn_score, "is_turning": True}
+  @staticmethod
+  def compute_turn_score(model, heading_thresh_rad=0.1, lateral_offset_thresh=1.5):
+    if (len(model.position.x) == ModelConstants.IDX_N and
+       len(model.position.y) == ModelConstants.IDX_N):
+      x = np.interp(T_IDXS_MPC, ModelConstants.T_IDXS, model.position.x)
+      y = np.interp(T_IDXS_MPC, ModelConstants.T_IDXS, model.position.y)
     else:
-        return {"score": turn_score, "is_turning": False}
+      x = np.zeros(len(T_IDXS_MPC))
+      y = np.zeros(len(T_IDXS_MPC))
+
+    if len(x) != len(y):
+      return {
+        'score': 0,
+        'is_turning': False,
+        'max_heading_change': 0,
+        'max_lateral_offset': 0,
+      }
+
+    max_time = len(x) * ModelConstants.DT_MDL
+    desired_time_steps = [0.5, 1.0, 1.5, 1.65]
+    time_steps = [t for t in desired_time_steps if t < max_time]
+
+    turn_score = 0.0
+    max_offset = 0.0
+    max_heading = 0.0
+    is_turning = False
+
+    for t in time_steps:
+      idx = int(t / dt)
+      dx = x[idx] - x[0]
+      dy = y[idx] - y[0]
+      heading_change = np.arctan2(dy, dx)
+      lateral_offset = abs(y[idx])
+
+      max_offset = max(max_offset, lateral_offset)
+      max_heading = max(max_heading, abs(heading_change))
+
+      if abs(heading_change) > heading_thresh_rad or lateral_offset > lateral_offset_thresh:
+        score = min(1.0, (abs(heading_change) / heading_thresh_rad + lateral_offset / lateral_offset_thresh) * 0.5)
+        turn_score = max(turn_score, score)
+        is_turning = True
+
+    return {
+      'score': np.clip(turn_score, 0.0, 1.0),
+      'is_turning': is_turning,
+      'max_heading_change': max_heading,
+      'max_lateral_offset': max_offset,
+    }
 
   def update(self, sm, carrot):
     if self.param_read_counter % 50 == 0:
@@ -197,6 +204,7 @@ class LongitudinalPlanner:
       self.disable_carrot = True
 
     # === 新增：判断是否即将转弯 ===
+    self.turn_enable = True
     if self.turn_enable:
       model = sm['modelV2']
       turn_info = self.compute_turn_score(model)
@@ -204,11 +212,11 @@ class LongitudinalPlanner:
       self.turn_score = turn_info['score']
 
       if self.is_turning:
-        print(f"[LongPlanner] turn_score: {self.turn_score:.2f}")
+        print(f"[LongPlanner] turn_score: {self.turn_score:.2f}, heading_change: {np.degrees(turn_info['max_heading_change']):.1f}°, lateral_offset: {turn_info['max_lateral_offset']:.2f}m")
 
-        # 转弯评分大为10时，切换为 blended 模式
-        if self.turn_score > 10:
-          self.disable_carrot = True #转弯时关闭carrot功能，切换到sp的DEC自动模式
+        # 转弯评分大为0.4时，切换为 blended 模式
+        if self.turn_score > 0.4:
+          self.disable_carrot = True  # 转弯时关闭carrot功能，切换到sp的DEC自动模式
     # === 新增：判断是否即将转弯 ===
 
     #carrot
