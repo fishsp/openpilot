@@ -1,68 +1,10 @@
 sunnypilot - 0.9.8.0 (2024-11-16)
 ========================
-* Always on driver monitoring toggle
+* 修改红灯无法准确停在停止线内的问题
 ************************
-* UPDATED: Synced with commaai's openpilot
-  * master commit 4ef757c (July 06, 2024)
-* NEW❗: Default Driving Model: Notre Dame (July 01, 2024)
-* NEW❗: Longitudinal: Acceleration Personality thanks to kegman, rav4kumar, and arne1282! (CTV 2.0: GlideTech)
-  * Select from three distinct acceleration personalities: Eco, Normal, and Sport
-  * Acceleration personalities are integrated directly into the model's acceleration matrix and can be activated in real-time!
-* NEW❗: Toyota - Drive Mode Selector
-  *  When enabled you can control acceleration personality just with press of button!
-* UPDATED: Dynamic Experimental Control
-  * Switched to weighted moving averages to enhance responsiveness to recent data.
-  * Goal is to improve real-time detection accuracy in dynamic conditions.
-  * Capable of handling the increased complexity that comes with this approach.
-  * Particularly beneficial in environments where recent changes are critical to performance.
-* NEW❗: Longitudinal: Dynamic Personality thanks to rav4kumar!
-  * Dynamically adjusts following distance and reaction based on your "Driving Personality" setting
-  * Personalities adapt in real-time to your speed and the distance to the lead car
-  * Provides a more responsive and tailored driving experience compared to predefined settings
-* UPDATED: Driving Personality: Updated mode names
-  * Aggressive, Moderate, Standard, Relaxed
-* NEW❗: Hyundai CAN: Enable Cruise Main by Default
-  * Set CRUISE MAIN to ON by default when the car starts, without engaging MADS
-  * This feature only applies when "openpilot Longitudinal Control (Alpha)" is enabled under the "Toggles" menu
-* NEW❗: Toyota - Enhanced Blind Spot Monitor (BSM) thanks to arne182, rav4kumar, and eFiniLan!
-  * Enables Blind Spot Monitor (BSM) signals parsing in sunnypilot using the factory Blind Spot Monitor (BSM)
-  * sunnypilot will use debugging CAN messages to receive unfiltered BSM signals, allowing detection of more objects
-  * Supported platforms
-    * RAV4 TSS1, equipped with factory Blind Spot Monitoring (BSM)
-    * Lexus LSS1, equipped with factory Blind Spot Monitoring (BSM)
-    * Toyota TSS1/1.5, equipped with factory Blind Spot Monitoring (BSM)
-    * Prius TSS2, equipped with factory Blind Spot Monitoring (BSM)
-  * NOTE: Only enable this feature if your Toyota/Lexus vehicle has factory Blind Spot Monitor equipped, and mentioned in the supported platforms list
-* UPDATED: Toyota: TSS2 longitudinal: Custom Tuning (CTV 2.0: GlideTech)
-  * Re-tuned and tested by the community (September 29, 2024)
-* UPDATED: Driving Model Selector v5
-  * NEW❗: Driving Model additions
-    * Notre Dame (July 01, 2024) - NDv3
-* UPDATED: Neural Network Lateral Control (NNLC)
-  * NEW❗: Remove Lateral Jerk Response (Alpha)
-  * FIXED: Hotfix for "lazy" steering performance in tighter curves thanks to twilsonco!
-* UPDATED: Toyota: Continued support for Smart DSU (SDSU) and Radar CAN Filter
-  * In response to the official deprecation of support for Smart DSU (SDSU) and Radar CAN Filter in the upstream ([commaai/openpilot#32777](https://github.com/commaai/openpilot/pull/32777)), sunnypilot will continue maintaining software support for Smart DSU (SDSU) and Radar CAN Filter
-* UPDATED: Continued support for Mapbox navigation
-  * In response to the official temporary deprecation of support for Mapbox navigation in the upstream ([commaai/openpilot#32773](https://github.com/commaai/openpilot/pull/32773)), sunnypilot will continue maintaining software support for Mapbox navigation
-* NEW❗: Toyota - Automatic Door Locking and Unlocking thanks to AlexandreSato, cydia2020, and dragonpilot-community!
-  * Auto Lock by Speed: All doors are automatically locked when vehicle speed is approximately 6 mph (10 km/h) or higher
-  * Auto Unlock by Shift to P: All doors are automatically unlocked when shifting the shift lever to P
-* FIXED: Driving Personality:
-  * Maniac mode now correctly enforced when selected
-* FIXED: Experimental Model Distance Button Hold
-  * Experimental Model toggle with distance button hold no longer changes Personality
-  * Personality setting remains consistent when switching between Chill and Experimental Mode
-* UI Updates
-  * Display Metrics Below Chevron
-    * NEW❗: Time to Lead Car
-      * Displays the time to reach the position previously occupied by the lead car
-    * NEW❗: Display Distance, Speed, and Time to Lead Car simultaneously
-* Ford F-150 2022-23 support
-* Ford F-150 Lightning 2021-23 support
-* Ford Mustang Mach-E 2021-23 support
-* Hyundai Kona Electric Non-SCC 2019 support thanks to NikitaNekrasov!
-* Kia Ceed Plug-in Hybrid Non-SCC 2022 support thanks to TerminatorNL!
+* 修改使用CP模式进行红灯前的停车。
+* 红灯停车1秒后切换到Blended模式进行绿灯起步的检测。
+* 启动后时速超过6km/h 3秒钟后切换回CP模式用于检测红灯。
 
 sunnypilot - 0.9.7.1 (2024-06-13)
 ========================
