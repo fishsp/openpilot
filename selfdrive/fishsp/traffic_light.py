@@ -10,6 +10,7 @@ from openpilot.selfdrive.controls.lib.events import Events
 
 #EventName = log.OnroadEvent.EventName
 LaneChangeState = log.LaneChangeState
+STANDSTILL_COUNT = 1.0 #车辆静止倒计时
 
 class XState(Enum):
   lead = 0
@@ -263,7 +264,7 @@ class CarrotPlanner:
             self.standstill_count = 0
             self.blended_count = 0
         else:
-          self.standstill_count = 2.0 / DT_MDL
+          self.standstill_count = STANDSTILL_COUNT / DT_MDL #车辆静止后倒计时1秒
       self.stopping_count = max(0, self.stopping_count - 1)
       v_cruise = 0 #巡航速度设置为0
     elif self.xState == XState.e2eStop: #如果处于 e2eStop（预计停车
@@ -294,7 +295,7 @@ class CarrotPlanner:
           if v_ego < 0.3: #若车速 v_ego < 0.3，则进入 e2eStopped
             self.stopping_count = 0.5 / DT_MDL #计算停车时间0.5秒对应的次数
             self.xState = XState.e2eStopped #设置状态为e2eStopped
-            self.standstill_count = 2.0 / DT_MDL
+            self.standstill_count = STANDSTILL_COUNT / DT_MDL
     elif self.xState == XState.e2ePrepare: #如果处于 e2ePrepare（准备起步）
       if lead_detected: #如果前方有车，进入 lead（跟车）
         self.xState = XState.lead
