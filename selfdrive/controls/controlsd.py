@@ -60,7 +60,7 @@ ACTUATOR_FIELDS = tuple(car.CarControl.Actuators.schema.fields.keys())
 ACTIVE_STATES = (State.enabled, State.softDisabling, State.overriding)
 ENABLED_STATES = (State.preEnabled, *ACTIVE_STATES)
 
-PERSONALITY_MAPPING = {0: 0, 1: 1, 2: 2, 3: 2}
+PERSONALITY_MAPPING = {0: 0, 1: 1, 2: 2, 3: 3}
 
 
 class Controls:
