@@ -67,6 +67,7 @@ class CarController(CarControllerBase):
     self.jerk_limit = 0.0
     self.cruiseState_last = False
     self.accel_limit = 0
+    self.clip_accel = False
 
     sub_services = ['longitudinalPlan', 'longitudinalPlanSP']
     if CP.openpilotLongitudinalControl:
@@ -104,8 +105,7 @@ class CarController(CarControllerBase):
     self.v_target_plan = 0
     self.custom_stock_planner_speed = self.param_s.get_bool("CustomStockLongPlanner")
     self.lead_distance = 0
-    self.manual_parking_brake = self.param_s.get_bool("SubaruManualParkingBrakeSng")
-    self.stock_long_toyota = self.param_s.get_bool("StockLongToyota")
+    self.custom_accel_limit = self.param_s.get_bool("LkasToggle")  # 用户限制加速度
 
     self.jerk = 0.0
     self.jerk_l = 0.0
@@ -155,8 +155,7 @@ class CarController(CarControllerBase):
       self.v_target_plan = min(CC.vCruise * CV.KPH_TO_MS, self.speeds)
 
     if self.frame % 200 == 0:
-      self.manual_parking_brake = self.param_s.get_bool("SubaruManualParkingBrakeSng")
-      self.stock_long_toyota = self.param_s.get_bool("StockLongToyota")
+      self.custom_accel_limit = self.param_s.get_bool("LkasToggle")  # 用户限制加速度
 
     actuators = CC.actuators
     hud_control = CC.hudControl
@@ -237,6 +236,7 @@ class CarController(CarControllerBase):
       if self.CP.flags & HyundaiFlags.ENABLE_BLINKERS:
         can_sends.append(make_tester_present_msg(0x7b1, self.CAN.ECAN, suppress_response=True))
 
+    self.clip_accel = False
     if self.CP.openpilotLongitudinalControl:
       speed = CS.out.vEgoRaw  # 当前车速（m/s）
       # 定义车速区间对应的 jerk 和 accel 限制值
@@ -300,7 +300,7 @@ class CarController(CarControllerBase):
         self.accel_ramp_time = 0.0
 
       if actuators.accel >= -0.1: #控制加速度大于-0.1时
-        if self.manual_parking_brake:  # 开启斯巴鲁驻车选项后才启用加速度表
+        if self.custom_accel_limit:  # 启用用户的加速度表
           if speed <= 0:  # 车速小于 0 km/h
             jerk_limit = speed_limits[0]["jerk"]  # 最大 jerk
             accel_limit = speed_limits[0]["accel"]  # 最大加速度
@@ -322,13 +322,14 @@ class CarController(CarControllerBase):
           self.accel_limit = 0.3  # 初始最大加速度限制
           self.jerk_limit = 0.2  # 初始jerk目标
 
-        if CS.out.cruiseState.enabled and self.stock_long_toyota:  # 打开了丰田纵向开关才允许平滑
+        if CS.out.cruiseState.enabled:  # 打开了丰田纵向开关才允许平滑
           accel_ramp_time_max = 3.0
           if self.accel_ramp_time < accel_ramp_time_max:
             self.accel_ramp_time += DT_CTRL
             self.accel_ramp_time = min(self.accel_ramp_time, accel_ramp_time_max)  # 确保不会超过 3.0
             self.accel_limit = interp(self.accel_ramp_time, [0, accel_ramp_time_max], [0.3, max(0.3, accel_limit)])
             self.jerk_limit = interp(self.accel_ramp_time, [0, accel_ramp_time_max], [0.2, max(0.2, jerk_limit)])
+            self.clip_accel = True
           else:
             self.accel_limit = accel_limit  # 3秒后直接使用PID加速度
             self.jerk_limit = jerk_limit  # 3秒后直接使用jerk
@@ -339,9 +340,10 @@ class CarController(CarControllerBase):
 
         self.cruiseState_last = CS.out.cruiseState.enabled  # 记录状态
 
-        # 使用 clip 限制加速度，确保加速度在指定范围内(开启斯巴鲁驻车选项后)
-        if self.manual_parking_brake or self.stock_long_toyota:
+        # 使用 clip 限制加速度，确保加速度在指定范围内(开启了用户加速度表限制后)
+        if self.custom_accel_limit or self.clip_accel:
           accel = clip(actuators.accel, CarControllerParams.ACCEL_MIN, self.accel_limit)
+          self.clip_accel = True
       else:
         self.accel_limit = accel_limit
         self.jerk_limit = jerk_limit
@@ -427,7 +429,7 @@ class CarController(CarControllerBase):
         use_fca = self.CP.flags & HyundaiFlags.USE_FCA.value
         self.make_accel(CS, actuators)
 
-        if self.manual_parking_brake  or self.stock_long_toyota: #开启斯巴鲁驻车选项后
+        if self.custom_accel_limit  or self.clip_accel: #开启用户加速度表限制后
           jerk = min(self.jerk_u, self.jerk_limit) #确保self.jerk_u不会超过self.jerk_limit
           can_sends.extend(hyundaican.create_acc_commands(self.packer, CC.enabled and CS.out.cruiseState.enabled, self.accel_raw, self.accel_val, self.jerk_l, jerk, int(self.frame / 2),
                                                           hud_control, set_speed_in_units, stopping,
