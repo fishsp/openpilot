@@ -9,6 +9,7 @@ from openpilot.common.realtime import DT_DMON
 from openpilot.common.filter_simple import FirstOrderFilter
 from openpilot.common.stat_live import RunningStatFilter
 from openpilot.common.transformations.camera import DEVICE_CAMERAS
+from openpilot.common.params import Params
 
 EventName = car.CarEvent.EventName
 
@@ -74,6 +75,118 @@ class DRIVER_MONITOR_SETTINGS:
     self._MAX_TERMINAL_ALERTS = 3  # not allowed to engage after 3 terminal alerts
     self._MAX_TERMINAL_DURATION = int(30 / self._DT_DMON)  # not allowed to engage after 30s of terminal alerts
 
+  def dm_open(self):
+    self._DT_DMON = DT_DMON
+    # ref (page15-16): https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX:42018X1947&rid=2
+    self._AWARENESS_TIME = 30.  # passive wheeltouch total timeout
+    self._AWARENESS_PRE_TIME_TILL_TERMINAL = 15.
+    self._AWARENESS_PROMPT_TIME_TILL_TERMINAL = 6.
+    self._DISTRACTED_TIME = 11.  # active monitoring total timeout
+    self._DISTRACTED_PRE_TIME_TILL_TERMINAL = 8.
+    self._DISTRACTED_PROMPT_TIME_TILL_TERMINAL = 6.
+
+    self._FACE_THRESHOLD = 0.7
+    self._EYE_THRESHOLD = 0.65
+    self._SG_THRESHOLD = 0.9
+    self._BLINK_THRESHOLD = 0.865
+
+    self._EE_THRESH11 = 0.25
+    self._EE_THRESH12 = 7.5
+    self._EE_MAX_OFFSET1 = 0.06
+    self._EE_MIN_OFFSET1 = 0.025
+    self._EE_THRESH21 = 0.01
+    self._EE_THRESH22 = 0.35
+
+    self._POSE_PITCH_THRESHOLD = 0.3133
+    self._POSE_PITCH_THRESHOLD_SLACK = 0.3237
+    self._POSE_PITCH_THRESHOLD_STRICT = self._POSE_PITCH_THRESHOLD
+    self._POSE_YAW_THRESHOLD = 0.4020
+    self._POSE_YAW_THRESHOLD_SLACK = 0.5042
+    self._POSE_YAW_THRESHOLD_STRICT = self._POSE_YAW_THRESHOLD
+    self._PITCH_NATURAL_OFFSET = 0.029  # initial value before offset is learned
+    self._PITCH_NATURAL_THRESHOLD = 0.449
+    self._YAW_NATURAL_OFFSET = 0.097  # initial value before offset is learned
+    self._PITCH_MAX_OFFSET = 0.124
+    self._PITCH_MIN_OFFSET = -0.0881
+    self._YAW_MAX_OFFSET = 0.289
+    self._YAW_MIN_OFFSET = -0.0246
+
+    self._POSESTD_THRESHOLD = 0.3
+    self._HI_STD_FALLBACK_TIME = int(10 / self._DT_DMON)  # fall back to wheel touch if model is uncertain for 10s
+    self._DISTRACTED_FILTER_TS = 0.25  # 0.6Hz
+    self._ALWAYS_ON_ALERT_MIN_SPEED = 7
+
+    self._POSE_CALIB_MIN_SPEED = 13  # 30 mph
+    self._POSE_OFFSET_MIN_COUNT = int(
+      60 / self._DT_DMON)  # valid data counts before calibration completes, 1min cumulative
+    self._POSE_OFFSET_MAX_COUNT = int(
+      360 / self._DT_DMON)  # stop deweighting new data after 6 min, aka "short term memory"
+
+    self._WHEELPOS_CALIB_MIN_SPEED = 11
+    self._WHEELPOS_THRESHOLD = 0.5
+    self._WHEELPOS_FILTER_MIN_COUNT = int(15 / self._DT_DMON)  # allow 15 seconds to converge wheel side
+
+    self._RECOVERY_FACTOR_MAX = 5.  # relative to minus step change
+    self._RECOVERY_FACTOR_MIN = 1.25  # relative to minus step change
+
+    self._MAX_TERMINAL_ALERTS = 3  # not allowed to engage after 3 terminal alerts
+    self._MAX_TERMINAL_DURATION = int(30 / self._DT_DMON)  # not allowed to engage after 30s of terminal alerts
+
+  def dm_close(self):
+    self._DT_DMON = DT_DMON
+    # ref (page15-16): https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX:42018X1947&rid=2
+    self._AWARENESS_TIME = 300. # passive wheeltouch total timeout
+    self._AWARENESS_PRE_TIME_TILL_TERMINAL = 150.
+    self._AWARENESS_PROMPT_TIME_TILL_TERMINAL = 60.
+    self._DISTRACTED_TIME = 110. # active monitoring total timeout
+    self._DISTRACTED_PRE_TIME_TILL_TERMINAL = 80.
+    self._DISTRACTED_PROMPT_TIME_TILL_TERMINAL = 60.
+
+    self._FACE_THRESHOLD = 0.7
+    self._EYE_THRESHOLD = 0.65
+    self._SG_THRESHOLD = 0.9
+    self._BLINK_THRESHOLD = 0.865
+
+    self._EE_THRESH11 = 0.25
+    self._EE_THRESH12 = 7.5
+    self._EE_MAX_OFFSET1 = 0.06
+    self._EE_MIN_OFFSET1 = 0.025
+    self._EE_THRESH21 = 0.01
+    self._EE_THRESH22 = 0.35
+
+    self._POSE_PITCH_THRESHOLD = 0.3133
+    self._POSE_PITCH_THRESHOLD_SLACK = 0.3237
+    self._POSE_PITCH_THRESHOLD_STRICT = self._POSE_PITCH_THRESHOLD
+    self._POSE_YAW_THRESHOLD = 0.4020
+    self._POSE_YAW_THRESHOLD_SLACK = 0.5042
+    self._POSE_YAW_THRESHOLD_STRICT = self._POSE_YAW_THRESHOLD
+    self._PITCH_NATURAL_OFFSET = 0.029 # initial value before offset is learned
+    self._PITCH_NATURAL_THRESHOLD = 0.449
+    self._YAW_NATURAL_OFFSET = 0.097 # initial value before offset is learned
+    self._PITCH_MAX_OFFSET = 0.124
+    self._PITCH_MIN_OFFSET = -0.0881
+    self._YAW_MAX_OFFSET = 0.289
+    self._YAW_MIN_OFFSET = -0.0246
+
+    self._POSESTD_THRESHOLD = 0.3
+    self._HI_STD_FALLBACK_TIME = int(10  / self._DT_DMON)  # fall back to wheel touch if model is uncertain for 10s
+    self._DISTRACTED_FILTER_TS = 0.25  # 0.6Hz
+    self._ALWAYS_ON_ALERT_MIN_SPEED = 7
+
+    self._POSE_CALIB_MIN_SPEED = 13  # 30 mph
+    self._POSE_OFFSET_MIN_COUNT = int(60 / self._DT_DMON)  # valid data counts before calibration completes, 1min cumulative
+    self._POSE_OFFSET_MAX_COUNT = int(360 / self._DT_DMON)  # stop deweighting new data after 6 min, aka "short term memory"
+
+    self._WHEELPOS_CALIB_MIN_SPEED = 11
+    self._WHEELPOS_THRESHOLD = 0.5
+    self._WHEELPOS_FILTER_MIN_COUNT = int(15 / self._DT_DMON) # allow 15 seconds to converge wheel side
+
+    self._RECOVERY_FACTOR_MAX = 5.  # relative to minus step change
+    self._RECOVERY_FACTOR_MIN = 1.25  # relative to minus step change
+
+    self._MAX_TERMINAL_ALERTS = 30  # not allowed to engage after 30 terminal alerts
+    self._MAX_TERMINAL_DURATION = int(300 / self._DT_DMON)  # not allowed to engage after 300s of terminal alerts
+
 class DistractedType:
   NOT_DISTRACTED = 0
   DISTRACTED_POSE = 1 << 0
@@ -131,6 +244,11 @@ class DriverMonitoring:
       settings = DRIVER_MONITOR_SETTINGS()
     # init policy settings
     self.settings = settings
+
+    self.param_s = Params()
+    self.dm_close = self.param_s.get_bool("SubaruManualParkingBrakeSng")
+    if self.dm_close:
+      self.settings.dm_close()
 
     # init driver status
     self.wheelpos_learner = RunningStatFilter()
