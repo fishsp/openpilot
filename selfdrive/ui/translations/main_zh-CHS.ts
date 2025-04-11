@@ -205,7 +205,7 @@
     </message>
     <message>
         <source>blended</source>
-        <translation>混合</translation>
+        <translation>blended</translation>
     </message>
     <message>
         <source>acc</source>
