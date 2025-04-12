@@ -113,9 +113,23 @@ class LongitudinalPlanner:
     self.turn_score = 0.0
     self.turn_enable = False
 
+    self.traffic_enable = False
+    self.traffic_lead_option = False
+    self.dis_traffic_distance_thr = 20
+    self.dis_traffic_distance_hys = 5
+    self.lead_dis_carrot = False
+
   def read_param(self):
     try:
       self.dynamic_experimental_controller.set_enabled(self.params.get_bool("DynamicExperimentalControl"))
+      #新加参数
+      self.traffic_enable = self.params.get_bool("EnableTrafficLight")
+      self.traffic_lead_option = self.params.get_bool("DisTrafficLeadDistance")
+      val = self.params.get("DisTrafficLeadDistanceThr")
+      self.dis_traffic_distance_thr = int(val) if val and val.isdigit() else 0
+      val = self.params.get("DisTrafficLeadDistanceHys")
+      self.dis_traffic_distance_hys = int(val) if val and val.isdigit() else 0
+      #新加参数
     except AttributeError:
       self.dynamic_experimental_controller = DynamicExperimentalController()
       self.accel_controller = AccelController()
@@ -210,9 +224,30 @@ class LongitudinalPlanner:
     v_ego_kph = v_ego * CV.MS_TO_KPH
 
     self.disable_carrot = False
+    radarstate = sm['radarState']
     car_state = sm['carState']
+
+    #用户禁止了红绿灯功能
+    if not self.traffic_enable:
+      self.disable_carrot = True
+    #非巡航状态时关闭红绿灯功能
     if not car_state.cruiseState.enabled:
       self.disable_carrot = True
+
+    #有前车并且距离小于指定距离时关闭carrot红绿灯模式
+    if self.traffic_lead_option:
+      hasLead = radarstate.leadOne.status
+      if not self.lead_dis_carrot:
+        if hasLead and radarstate.leadOne.dRel < self.dis_traffic_distance_thr:
+          self.disable_carrot = True
+          self.lead_dis_carrot = True
+      else:
+        if hasLead and radarstate.leadOne.dRel < (self.dis_traffic_distance_thr + self.dis_traffic_distance_hys):  # 这里是为了防止频繁的切换
+          self.disable_carrot = True
+        else:
+          self.lead_dis_carrot = False
+    else:
+      self.lead_dis_carrot = False
 
     # === 新增：判断是否即将转弯 ===
     self.turn_enable = True
