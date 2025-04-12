@@ -364,6 +364,17 @@ std::unordered_map<std::string, uint32_t> keys = {
     {"OsmStateName", PERSISTENT},
     {"OSMDownloadProgress", CLEAR_ON_MANAGER_START},
     {"OsmDbUpdatesCheck", CLEAR_ON_MANAGER_START},  // mapd database update happens with device ON, reset on boot
+
+    {"ConditionExperimentalMode", PERSISTENT | BACKUP},
+    {"ExperimentalModeSpeed", PERSISTENT | BACKUP},
+    {"ExperimentalModeAngle", PERSISTENT | BACKUP},
+    {"ExperimentalModeAndSpeed", PERSISTENT | BACKUP},
+    {"StopDistanceCarrot", PERSISTENT | BACKUP},
+    {"ComfortBrake", PERSISTENT | BACKUP},
+    {"EnableTrafficLight", PERSISTENT | BACKUP},
+    {"DisTrafficLeadDistance", PERSISTENT | BACKUP},
+    {"DisTrafficLeadDistanceThr", PERSISTENT | BACKUP},
+    {"DisTrafficLeadDistanceHys", PERSISTENT | BACKUP},
     // }} PFEIFER - MAPD
 };
 

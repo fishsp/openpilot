@@ -124,6 +124,17 @@ def manager_init() -> None:
     ("LastSunnylinkPingTime", "0"),
     ("EnableGitlabRunner", "0"),
     ("EnableSunnylinkUploader", "0"),
+
+    ("ConditionExperimentalMode", "0"),
+    ("ExperimentalModeSpeed", "0"),
+    ("ExperimentalModeAngle", "0"),
+    ("ExperimentalModeAndSpeed", "0"),
+    ("StopDistanceCarrot", "600"),
+    ("ComfortBrake", "240"),
+    ("EnableTrafficLight", "1"),
+    ("DisTrafficLeadDistance", "0"),
+    ("DisTrafficLeadDistanceThr", "20"),
+    ("DisTrafficLeadDistanceHys", "5"),
   ]
   if not PC:
     default_params.append(("LastUpdateTime", datetime.datetime.now(datetime.UTC).replace(tzinfo=None).isoformat().encode('utf8')))
