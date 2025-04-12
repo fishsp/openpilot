@@ -105,7 +105,7 @@ class Controls:
     if self.d_camera_hardware_missing:
       ignore += ['driverMonitoringState']
     lateral_plan_svs = ['lateralPlanDEPRECATED', 'lateralPlanSPDEPRECATED']
-    self.sm = messaging.SubMaster(['deviceState', 'pandaStates', 'peripheralState', 'modelV2', 'liveCalibration',
+    self.sm = messaging.SubMaster(['deviceState', 'pandaStates', 'peripheralState', 'modelV2', 'liveCalibration','carState',
                                    'carOutput', 'driverMonitoringState', 'longitudinalPlan', 'liveLocationKalman',
                                    'managerState', 'liveParameters', 'radarState', 'liveTorqueParameters',
                                    'testJoystick', 'longitudinalPlanSP', 'modelV2SP'] + self.camera_packets + self.sensor_packets + lateral_plan_svs,
@@ -163,6 +163,12 @@ class Controls:
     self.steer_limited = False
     self.desired_curvature = 0.0
     self.experimental_mode = False
+    self.user_experimental_mode = False
+    self.condition_experimental_mode = False
+    self.in_condition_experimental_mode = False
+    self.experimental_mode_speed = 0
+    self.experimental_mode_and_speed = 0
+    self.experimental_mode_angle = 0
     self.personality = self.read_personality_param()
     self.v_cruise_helper = VCruiseHelper(self.CP)
     self.recalibrating_seen = False
@@ -622,6 +628,35 @@ class Controls:
     CC = car.CarControl.new_message()
     CC.enabled = self.enabled
 
+    #fishsp add
+    #steeringAngle = abs(CS.out.steeringAngleDeg)  # 方向盘角度（度）
+    steeringAngle = abs(self.sm['carState'].steeringAngleDeg)
+    v_ego_kph = CS.vEgo * CV.MS_TO_KPH
+    condition_experimental_mode_disable = False
+    if self.experimental_mode_angle == 0 and self.experimental_mode_speed == 0:
+      condition_experimental_mode_disable = True
+
+    if self.condition_experimental_mode and not condition_experimental_mode_disable and self.experimental_mode:  # 用户设置了条件模式和实验模式
+      if not self.in_condition_experimental_mode:  # 没有进入条件模式
+        if ((self.experimental_mode_angle != 0 and steeringAngle > self.experimental_mode_angle and (self.experimental_mode_and_speed == 0 or v_ego_kph > self.experimental_mode_and_speed)) or #方向盘角度大于指定角度时关闭实验模式
+                (self.experimental_mode_speed != 0 and v_ego_kph > self.experimental_mode_speed)): #或者速度大于指定速度时关闭实验模式
+          self.user_experimental_mode = False
+          self.in_condition_experimental_mode = True
+        else:
+          self.user_experimental_mode = self.experimental_mode
+      else:
+        _experimental_mode_angle = max(0, self.experimental_mode_angle - 5)
+        _experimental_mode_speed = max(0, self.experimental_mode_speed - 5)
+        _experimental_mode_and_speed = max(0, self.experimental_mode_and_speed - 5)
+        if ( ((self.experimental_mode_angle != 0 and (steeringAngle <= _experimental_mode_angle or (v_ego_kph <= _experimental_mode_and_speed and self.experimental_mode_and_speed != 0))) or (self.experimental_mode_angle == 0)) and
+             ((self.experimental_mode_speed != 0 and v_ego_kph <= _experimental_mode_speed) or (self.experimental_mode_speed == 0)) ):
+          self.user_experimental_mode = self.experimental_mode
+          self.in_condition_experimental_mode = False
+    else:
+      self.in_condition_experimental_mode = False
+      self.user_experimental_mode = self.experimental_mode
+    #fishsp add
+
     # Check which actuators can be enabled
     standstill = CS.vEgo <= max(self.CP.minSteerSpeed, MIN_LATERAL_CONTROL_SPEED) or CS.standstill
     CC.latActive = (self.active or self.mads_ndlob) and not CS.steerFaultTemporary and not CS.steerFaultPermanent and \
@@ -894,7 +929,7 @@ class Controls:
     controlsState.cumLagMs = -self.rk.remaining * 1000.
     controlsState.startMonoTime = int(start_time * 1e9)
     controlsState.forceDecel = bool(force_decel)
-    controlsState.experimentalMode = self.experimental_mode
+    controlsState.experimentalMode = self.experimental_mode and self.user_experimental_mode
     controlsState.personality = PERSONALITY_MAPPING.get(self.personality, log.LongitudinalPersonality.standard)
 
     lat_tuning = self.CP.lateralTuning.which()
@@ -985,6 +1020,14 @@ class Controls:
       self.reverse_acc_change = self.params.get_bool("ReverseAccChange")
       self.dynamic_experimental_control = self.params.get_bool("DynamicExperimentalControl")
       self.overtaking_accel = self.params.get_bool("OvertakingAccelerationAssist")
+
+      self.condition_experimental_mode = self.params.get_bool("ConditionExperimentalMode")
+      val = self.params.get("ExperimentalModeAngle")
+      self.experimental_mode_angle = int(val) if val and val.isdigit() else 0
+      val = self.params.get("ExperimentalModeSpeed")
+      self.experimental_mode_speed = int(val) if val and val.isdigit() else 0
+      val = self.params.get("ExperimentalModeAndSpeed")
+      self.experimental_mode_and_speed = int(val) if val and val.isdigit() else 0
 
       if self.sm.frame % int(2.5 / DT_CTRL) == 0:
         self.live_torque = self.params.get_bool("LiveTorque")
