@@ -736,6 +736,73 @@ Please use caution when using this feature. Only use the blinker when traffic an
     </message>
 </context>
 <context>
+    <name>ExperimentalModeSettings</name>
+    <message>
+        <source>Back</source>
+        <translation>返回</translation>
+    </message>
+    <message>
+        <source>Disable</source>
+        <translation>关闭</translation>
+    </message>
+    <message>
+        <source>Degree</source>
+        <translation>度</translation>
+    </message>
+    <message>
+        <source>Experimental SteerAngle And Speed Setting</source>
+        <translation>方向盘角度和速度设置(均大于时关闭实验模式)</translation>
+    </message>
+    <message>
+        <source>Experimental Speed Setting</source>
+        <translation>速度设置(大于时关闭实验模式)</translation>
+    </message>
+    <message>
+        <source>Enable Condition Experimental Mode</source>
+        <translation>开启条件实验模式</translation>
+    </message>
+    <message>
+        <source>Enable this toggle to setting the experimental mode, Disable experimental mode when the speed is greater than the specified value or the Angle is greater than the specified value</source>
+        <translation>打开此开关后，当设定的速度大于指定速度或者方向盘角度大于指定角度时关闭实验模式。</translation>
+    </message>
+    <message>
+        <source>Disable Experimental Mode when the angle large than the value.</source>
+        <translation>当方向盘角度大于设置值时关闭实验模式。</translation>
+    </message>
+    <message>
+        <source>Disable Experimental Mode when the speed large than the value.</source>
+        <translation>当速度大于设置值时关闭实验模式。</translation>
+    </message>
+    <message>
+        <source>Stop Distance Setting(600x0.01m)</source>
+        <translation>停车距离设置(600x0.01米)</translation>
+    </message>
+    <message>
+        <source>Break Comfort Setting(240x0.01m/s^2)</source>
+        <translation>刹车舒适度设置(240x0.01m/s^2)</translation>
+    </message>
+    <message>
+        <source>TrafficLight Setting</source>
+        <translation>红绿灯设置</translation>
+    </message>
+    <message>
+        <source>Disable trafficLight follow distance setting</source>
+        <translation>红绿灯跟车距离设置(小于时关闭红绿灯功能)</translation>
+    </message>
+    <message>
+        <source>Disable trafficLight when follow distance less than the value</source>
+        <translation>跟车距离低于设定值时关闭红绿灯功能</translation>
+    </message>
+    <message>
+        <source>TrafficLight follow distance hysteresis</source>
+        <translation>红绿灯跟车距离迟滞</translation>
+    </message>
+    <message>
+        <source>Enable trafficLight</source>
+        <translation>开启红绿灯功能</translation>
+    </message>
+</context>
+<context>
     <name>MadsSettings</name>
     <message>
         <source>Enable ACC+MADS with RES+/SET-</source>
@@ -2620,6 +2687,10 @@ Reboot Required.</source>
     <message>
         <source>Customize Lane Change</source>
         <translation>自定义变道设置</translation>
+    </message>
+    <message>
+        <source>User Setting</source>
+        <translation>用户功能设置</translation>
     </message>
     <message>
         <source>Customize Offsets</source>

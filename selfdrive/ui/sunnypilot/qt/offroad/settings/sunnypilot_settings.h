@@ -33,6 +33,7 @@ Last updated: July 29, 2024
 #include "selfdrive/ui/sunnypilot/ui.h"
 #include "selfdrive/ui/sunnypilot/qt/offroad/settings/sunnypilot/custom_offsets_settings.h"
 #include "selfdrive/ui/sunnypilot/qt/offroad/settings/sunnypilot/lane_change_settings.h"
+#include "selfdrive/ui/sunnypilot/qt/offroad/settings/sunnypilot/experimental_settings.h"
 #include "selfdrive/ui/sunnypilot/qt/offroad/settings/sunnypilot/mads_settings.h"
 #include "selfdrive/ui/sunnypilot/qt/offroad/settings/sunnypilot/speed_limit_control_settings.h"
 #include "selfdrive/ui/sunnypilot/qt/offroad/settings/sunnypilot/speed_limit_warning_settings.h"
@@ -87,6 +88,7 @@ private:
   SubPanelButton *slpSettings = nullptr;
   SpeedLimitPolicySettings* slp_settings = nullptr;
   LaneChangeSettings* lane_change_settings = nullptr;
+  ExperimentalModeSettings* experimental_mode_settings = nullptr;
   CustomOffsetsSettings* custom_offsets_settings = nullptr;
   Params params;
   std::map<std::string, ParamControlSP*> toggles;

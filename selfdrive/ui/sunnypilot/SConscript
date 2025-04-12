@@ -10,6 +10,7 @@ widgets_src = [
   "sunnypilot/qt/offroad/settings/trips_settings.cc",
   "sunnypilot/qt/offroad/settings/sunnypilot/mads_settings.cc",
   "sunnypilot/qt/offroad/settings/sunnypilot/lane_change_settings.cc",
+  "sunnypilot/qt/offroad/settings/sunnypilot/experimental_settings.cc",
   "sunnypilot/qt/offroad/settings/sunnypilot/speed_limit_control_settings.cc",
   "sunnypilot/qt/offroad/settings/monitoring_settings.cc",
   "sunnypilot/qt/offroad/settings/osm_settings.cc",

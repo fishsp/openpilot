@@ -203,6 +203,24 @@ SunnypilotPanel::SunnypilotPanel(QWidget *parent) : QFrame(parent) {
     main_layout->setCurrentWidget(sunnypilotScreen);
   });
 
+  // Lane Change Settings
+  SubPanelButton *condExperimentalSettings = new SubPanelButton(tr("User Setting"));
+  condExperimentalSettings->setObjectName("user_setting_btn");
+  // Set margin on the outside of the button
+  QVBoxLayout* condExperimentalSettingsLayout = new QVBoxLayout;
+  condExperimentalSettingsLayout->setContentsMargins(0, 0, 0, 30);
+  condExperimentalSettingsLayout->addWidget(condExperimentalSettings);
+  connect(condExperimentalSettings, &QPushButton::clicked, [=]() {
+    scrollView->setLastScrollPosition();
+    main_layout->setCurrentWidget(experimental_mode_settings);
+  });
+
+  experimental_mode_settings = new ExperimentalModeSettings(this);
+  connect(experimental_mode_settings, &ExperimentalModeSettings::backPress, [=]() {
+    scrollView->restoreScrollPosition();
+    main_layout->setCurrentWidget(sunnypilotScreen);
+  });
+
   // Custom Offsets Settings
   SubPanelButton *customOffsetsSettings = new SubPanelButton(tr("Customize Offsets"));
   customOffsetsSettings->setObjectName("custom_offsets_btn");
@@ -300,6 +318,8 @@ SunnypilotPanel::SunnypilotPanel(QWidget *parent) : QFrame(parent) {
     dlp_settings_texts,
     340);
   dlp_settings->showDescription();
+
+  list->addItem(condExperimentalSettingsLayout);
 
   for (auto &[param, title, desc, icon] : toggle_defs) {
     auto toggle = new ParamControlSP(param, title, desc, icon, this);
@@ -452,6 +472,7 @@ SunnypilotPanel::SunnypilotPanel(QWidget *parent) : QFrame(parent) {
   main_layout->addWidget(sunnypilotScreen);
   main_layout->addWidget(mads_settings);
   main_layout->addWidget(lane_change_settings);
+  main_layout->addWidget(experimental_mode_settings);
   main_layout->addWidget(custom_offsets_settings);
   main_layout->addWidget(slc_settings);
   main_layout->addWidget(slw_settings);
