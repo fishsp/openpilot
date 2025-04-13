@@ -3144,8 +3144,8 @@ This feature must be used along with SLC, and/or V-TSC, and/or M-TSC.</source>
 <context>
     <name>TorqueFriction</name>
     <message>
-        <source>FRICTION</source>
-        <translation>摩擦力</translation>
+        <source>FRICTION - </source>
+        <translation type="vanished">摩擦力</translation>
     </message>
     <message>
         <source>Adjust Friction for the Torque Lateral Controller. &lt;b&gt;Live&lt;/b&gt;: Override self-tune values; &lt;b&gt;Offline&lt;/b&gt;: Override self-tune offline values at car restart.</source>
@@ -3159,12 +3159,16 @@ This feature must be used along with SLC, and/or V-TSC, and/or M-TSC.</source>
         <source>Offline Only</source>
         <translation>仅离线</translation>
     </message>
+    <message>
+        <source>FRICTION</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>TorqueMaxLatAccel</name>
     <message>
-        <source>LAT_ACCEL_FACTOR</source>
-        <translation>横向控制加速度</translation>
+        <source>LAT_ACCEL_FACTOR - </source>
+        <translation type="vanished">横向控制加速度</translation>
     </message>
     <message>
         <source>Adjust Max Lateral Acceleration for the Torque Lateral Controller. &lt;b&gt;Live&lt;/b&gt;: Override self-tune values; &lt;b&gt;Offline&lt;/b&gt;: Override self-tune offline values at car restart.</source>
@@ -3177,6 +3181,10 @@ This feature must be used along with SLC, and/or V-TSC, and/or M-TSC.</source>
     <message>
         <source>Offline Only</source>
         <translation>仅离线</translation>
+    </message>
+    <message>
+        <source>LAT_ACCEL_FACTOR</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
