@@ -123,8 +123,15 @@ class CarrotPlanner:
   def _params_update(self):
     self.frame += 1
     self.params_count += 1
+    if self.params_count % 100:
+      try:
+        self.stop_distance = self.params.get_float("StopDistanceCarrot") / 100.
+        self.comfortBrake = self.params.get_float("ComfortBrake") / 100.
+      except AttributeError:
+        self.stop_distance = 6.0
+        self.comfortBrake = 2.4
 
-  # meta.desireState 是什么？
+        # meta.desireState 是什么？
   # meta.desireState 是一个长度为8的数组，表示 E2E 模型预测的各种“驾驶意图”的概率分布。
   # 这些意图是 OpenPilot 中定义的 8 个“Desire”，其顺序如下（来自 selfdrive/modeld/constants.py）：
   # 索引	意图名称	含义
