@@ -39,7 +39,7 @@
 #define LONG_NX     3
 #define LONG_NZ     0
 #define LONG_NU     1
-#define LONG_NP     6
+#define LONG_NP     8
 #define LONG_NBX    0
 #define LONG_NBX0   3
 #define LONG_NBU    0
