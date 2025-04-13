@@ -258,8 +258,7 @@ class LongitudinalPlanner:
       self.turn_score = turn_info['score']
 
       if self.is_turning:
-        print(
-          f"[Turn] score: {self.turn_score:.2f}, heading_change: {np.degrees(turn_info['max_heading_change']):.1f}°, lateral_offset: {turn_info['max_lateral_offset']:.2f}m")
+        #print(f"[Turn] score: {self.turn_score:.2f}, heading_change: {np.degrees(turn_info['max_heading_change']):.1f}°, lateral_offset: {turn_info['max_lateral_offset']:.2f}m")
 
         # 转弯评分大为0.4时，切换为 blended 模式
         if self.turn_score > 0.4:
