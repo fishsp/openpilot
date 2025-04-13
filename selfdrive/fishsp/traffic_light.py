@@ -10,7 +10,7 @@ from openpilot.selfdrive.controls.lib.events import Events
 
 #EventName = log.OnroadEvent.EventName
 LaneChangeState = log.LaneChangeState
-STANDSTILL_COUNT = 1.0 #车辆静止倒计时
+STANDSTILL_COUNT = 3.0 #车辆静止倒计时
 
 class XState(Enum):
   lead = 0
