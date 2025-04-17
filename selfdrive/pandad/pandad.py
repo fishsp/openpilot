@@ -36,6 +36,10 @@ def flash_panda(panda_serial: str) -> Panda:
   panda_signature = b"" if panda.bootstub else panda.get_signature()
   cloudlog.warning(f"Panda {panda_serial} connected, version: {panda_version}, signature {panda_signature.hex()[:16]}, expected {fw_signature.hex()[:16]}")
 
+  # 新增的逻辑，版本一致则跳过更新
+  if not panda.bootstub and panda_signature == fw_signature:
+      cloudlog.info("Panda firmware up to date, skipping update")
+      return panda
   if panda.bootstub or panda_signature != fw_signature:
     cloudlog.info("Panda firmware out of date, update required")
     panda.flash()
