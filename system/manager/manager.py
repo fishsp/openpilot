@@ -111,6 +111,7 @@ def manager_init() -> None:
     ("SunnylinkDongleId", f"{UNREGISTERED_SUNNYLINK_DONGLE_ID}"),
     ("CustomDrivingModel", "0"),
     ("DrivingModelGeneration", "4"),
+    ("DriverCameraHardwareMissing", "1"),
     ("LastSunnylinkPingTime", "0"),
   ]
   if not PC:
