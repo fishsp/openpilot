@@ -6,7 +6,7 @@ HandsOnWheelState = custom.DriverMonitoringStateSP.HandsOnWheelState
 
 _PRE_ALERT_THRESHOLD = 150  # 15s
 _PROMPT_ALERT_THRESHOLD = 300  # 30s
-_TERMINAL_ALERT_THRESHOLD = 600  # 60s
+_TERMINAL_ALERT_THRESHOLD = 800  # 80s
 
 _MIN_MONITORING_SPEED = 10 * CV.KPH_TO_MS  # No monitoring under 10kph
 
