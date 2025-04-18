@@ -13,7 +13,7 @@ from openpilot.common.conversions import Conversions as CV
 from openpilot.common.params import Params
 from openpilot.selfdrive.controls.lib.sunnypilot.helpers import debug
 
-TARGET_LAT_A = 1.9  # m/s^2
+TARGET_LAT_A = 1.5  # m/s^2
 MIN_TARGET_V = 5  # m/s
 
 PARAMS_UPDATE_PERIOD = 5.
