@@ -108,9 +108,9 @@ class VisionTurnController:
   def calculate_margin_factor(self, max_pred_lat_acc):
     # 使用 Sigmoid 函数平滑调整 margin_factor
     # 参数决定了平滑的区间和范围
-    steepness = 10  # 决定平滑的陡峭程度，较大的值让变化更快
-    shift = 0.8  # 控制从哪个横向加速度值开始快速变化
-    max_value = 0.75  # 最终的最大值
+    steepness = 9  # 决定平滑的陡峭程度，较大的值让变化更快
+    shift = 1.0  # 控制从哪个横向加速度值开始快速变化
+    max_value = 0.6  # 最终的最大值
 
     margin_factor = max_value / (1 + math.exp(-steepness * (max_pred_lat_acc - shift)))
     return margin_factor
