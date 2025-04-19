@@ -100,8 +100,8 @@ procs = [
   PythonProcess("statsd", "system.statsd", always_run),
 
   # PFEIFER - MAPD {{
-  NativeProcess("mapd", COMMON_DIR, [MAPD_PATH], always_run, enabled=not PC),
-  PythonProcess("mapd_manager", "system.mapd_manager", always_run, enabled=not PC),
+  #NativeProcess("mapd", COMMON_DIR, [MAPD_PATH], always_run, enabled=not PC),
+  #PythonProcess("mapd_manager", "system.mapd_manager", always_run, enabled=not PC),
   # }} PFEIFER - MAPD
 
   PythonProcess("otisserv", "selfdrive.navd.otisserv", always_run),
