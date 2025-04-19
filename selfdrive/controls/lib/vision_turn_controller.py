@@ -115,6 +115,15 @@ class VisionTurnController:
     margin_factor = max_value / (1 + math.exp(-steepness * (max_pred_lat_acc - shift)))
     return margin_factor
 
+  def get_steering_saturation_factor(self, steer):
+    # steer ∈ [-1, 1]
+    saturation = abs(steer)
+    # 从 0.7 开始生效，0.99 饱和
+    if saturation < 0.7:
+      return 0.0
+    # 映射到一个 0 ~ 0.5 的因子，用来乘以速度
+    return min(0.5, (saturation - 0.7) / 0.29 * 0.5)
+
   def _update_calculations(self, sm):
     #读取 modelV2 预测的横摆角速度（yaw rate） 和预测速度（x方向），rate_plan和vel_plan均为33个元素的数组
     rate_plan = np.array(np.abs(sm['modelV2'].orientationRate.z))
@@ -143,31 +152,22 @@ class VisionTurnController:
 
     # == 智能软限速逻辑 ==
     v_cruise_kmh = self._v_cruise * CV.MS_TO_KPH
-    # margin_factor 的横向加速度阈值和比例也可根据测试动态调节
-    #self.margin_factor = 0.0
-    #if self._max_pred_lat_acc > 0.2:
-    #  self.margin_factor = 0.25
-    #if self._max_pred_lat_acc > 0.4:
-    #  self.margin_factor = 0.5
-    #if self._max_pred_lat_acc > 0.6:
-    #  self.margin_factor = 0.75
-
     # 计算 margin_factor
     self.margin_factor = self.calculate_margin_factor(self._max_pred_lat_acc)
 
     # 限速区间逻辑
     if v_cruise_kmh > 90:
-      target_v_kmh = max(60, min(v_cruise_kmh * (1 - self.margin_factor)))
+      target_v_kmh = max(60, min(v_cruise_kmh * (1 - self.margin_factor), v_cruise_kmh))
     elif v_cruise_kmh > 80:
-      target_v_kmh = max(50, min(v_cruise_kmh * (1 - self.margin_factor)))
+      target_v_kmh = max(50, min(v_cruise_kmh * (1 - self.margin_factor), v_cruise_kmh))
     elif v_cruise_kmh > 70:
-      target_v_kmh = max(40, min(v_cruise_kmh * (1 - self.margin_factor)))
+      target_v_kmh = max(40, min(v_cruise_kmh * (1 - self.margin_factor), v_cruise_kmh))
     elif v_cruise_kmh > 60:
-      target_v_kmh = max(35, min(v_cruise_kmh * (1 - self.margin_factor)))
+      target_v_kmh = max(35, min(v_cruise_kmh * (1 - self.margin_factor), v_cruise_kmh))
     elif v_cruise_kmh > 50:
-      target_v_kmh = max(30, min(v_cruise_kmh * (1 - self.margin_factor)))
+      target_v_kmh = max(30, min(v_cruise_kmh * (1 - self.margin_factor), v_cruise_kmh))
     else:
-      target_v_kmh = max(20, v_cruise_kmh * (1 - self.margin_factor))
+      target_v_kmh = max(20, min(v_cruise_kmh * (1 - self.margin_factor), v_cruise_kmh))
 
     self._soft_v_target_kmh = target_v_kmh
 
@@ -176,7 +176,18 @@ class VisionTurnController:
     self._soft_v_target_filtered_kmh = alpha * self._soft_v_target_kmh + (1 - alpha) * self._soft_v_target_filtered_kmh
 
     #km/h速度换算成m/s
-    self._soft_v_target = self._soft_v_target_filtered_kmh * KPH_TO_MS
+    self._soft_v_target = self._soft_v_target_filtered_kmh * CV.KPH_TO_MS
+
+    #new 扭矩权重用于降速
+    #steer_saturation_level = 0.
+    #steer_saturation_enable = True
+    #if steer_saturation_enable:
+    #  steer_saturation_level = sm['controlsState'].steerSaturationLevel
+
+      #print(f"steer_saturation_level: {steer_saturation_level}")
+      #saturation_factor = self.get_steering_saturation_factor(steer_saturation_level)
+      #self._soft_v_target *= (1.0 - saturation_factor)
+      #self._v_target *= (1.0 - saturation_factor)
 
     v_target_kmh = self._soft_v_target * CV.MS_TO_KPH
     print(f"[VTC] lat_acc: {self._max_pred_lat_acc:5.1f} m/s^2 | v_cruise: {int(v_cruise_kmh):3d} km/h | v_soft: {int(self._soft_v_target_filtered_kmh):2d} km/h | vtc: {int(v_target_kmh):2d} km/h")
