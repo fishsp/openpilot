@@ -44,6 +44,7 @@ class VisionTurnController:
     self._v_ego = 0.
     self._v_target = MIN_TARGET_V
     #new
+    self._v_target_tmp = MIN_TARGET_V
     self._soft_v_target = 255.
     self._soft_v_target_kmh = 255.
     self._soft_v_target_filtered_kmh = 255.
@@ -147,8 +148,8 @@ class VisionTurnController:
 
     # “如果最大模型预测横向加速度是 3m/s²，我们希望限制它到 1.9m/s²，那就得减速到 sqrt(1.9/3) 倍当前速度”。
     # Get the target velocity for the maximum curve
-    self._v_target = (TARGET_LAT_A / max_curve) ** 0.5
-    self._v_target = max(self._v_target, MIN_TARGET_V)
+    self._v_target_tmp = (TARGET_LAT_A / max_curve) ** 0.5
+    self._v_target_tmp = max(self._v_target_tmp, MIN_TARGET_V)
 
     # == 智能软限速逻辑 ==
     v_cruise_kmh = self._v_cruise * CV.MS_TO_KPH
@@ -179,25 +180,25 @@ class VisionTurnController:
     alpha = 0.4 #alpha = 0.4：平滑速度，可调为 0.3～0.5，响应越快就越接近目标速度
     self._soft_v_target_filtered_kmh = alpha * self._soft_v_target_kmh + (1 - alpha) * self._soft_v_target_filtered_kmh
 
-    #km/h速度换算成m/s
-    self._soft_v_target = self._soft_v_target_filtered_kmh * CV.KPH_TO_MS
-
     #new 扭矩权重用于降速
-    #steer_saturation_level = 0.
-    #steer_saturation_enable = True
-    #if steer_saturation_enable:
-    #  steer_saturation_level = sm['controlsState'].steerSaturationLevel
+    steer = 0.
+    steer_saturation_enable = True
+    if steer_saturation_enable:
+      steer = abs(self.sm['carOutput'].actuatorsOutput.steer) #输出的扭矩
+      saturation_factor = self.get_steering_saturation_factor(steer)
+      self._soft_v_target *= (1.0 - saturation_factor)
+      self._v_target_tmp *= (1.0 - saturation_factor)
 
-      #print(f"steer_saturation_level: {steer_saturation_level}")
-      #saturation_factor = self.get_steering_saturation_factor(steer_saturation_level)
-      #self._soft_v_target *= (1.0 - saturation_factor)
-      #self._v_target *= (1.0 - saturation_factor)
-
+    #经典算法的目标速度
+    self._v_target_tmp = max(self._v_target_tmp, MIN_TARGET_V)
+    self._v_target = self._v_target_tmp
+    #智能软限速逻辑的目标速度
+    _soft_v_target = self._soft_v_target_filtered_kmh * CV.KPH_TO_MS #km/h速度换算成m/s
+    self._soft_v_target = max(_soft_v_target, MIN_TARGET_V)
     v_target_kmh = self._soft_v_target * CV.MS_TO_KPH
-    print(f"[VTC] lat_acc: {self._max_pred_lat_acc:5.1f} m/s^2 | v_cruise: {int(v_cruise_kmh):3d} km/h | v_soft: {int(self._soft_v_target_filtered_kmh):2d} km/h | vtc: {int(v_target_kmh):2d} km/h")
 
-    #从经典算法的目标速度和智能软限速逻辑逻辑中取最小速度
-    #self._v_target = min(self._v_target, self._soft_v_target)
+    #调试信息打印
+    print(f"[VTC] lat_acc: {self._max_pred_lat_acc:5.1f} m/s^2 | steer: {steer:3.1f} | v_cruise: {int(v_cruise_kmh):3d} km/h | v_soft: {int(self._soft_v_target_filtered_kmh):2d} km/h | vtc: {int(v_target_kmh):2d} km/h")
 
   def _state_transition(self):
     if not self._op_enabled or not self._is_enabled or self._gas_pressed or self._v_ego < MIN_TARGET_V:
