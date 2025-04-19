@@ -109,7 +109,7 @@ class VisionTurnController:
     # 使用 Sigmoid 函数平滑调整 margin_factor
     # 参数决定了平滑的区间和范围
     steepness = 10  # 决定平滑的陡峭程度，较大的值让变化更快
-    shift = 0.3  # 控制从哪个横向加速度值开始快速变化
+    shift = 0.8  # 控制从哪个横向加速度值开始快速变化
     max_value = 0.75  # 最终的最大值
 
     margin_factor = max_value / (1 + math.exp(-steepness * (max_pred_lat_acc - shift)))
@@ -161,11 +161,15 @@ class VisionTurnController:
     elif v_cruise_kmh > 80:
       target_v_kmh = max(50, min(v_cruise_kmh * (1 - self.margin_factor), v_cruise_kmh))
     elif v_cruise_kmh > 70:
-      target_v_kmh = max(40, min(v_cruise_kmh * (1 - self.margin_factor), v_cruise_kmh))
+      target_v_kmh = max(45, min(v_cruise_kmh * (1 - self.margin_factor), v_cruise_kmh))
     elif v_cruise_kmh > 60:
-      target_v_kmh = max(35, min(v_cruise_kmh * (1 - self.margin_factor), v_cruise_kmh))
+      target_v_kmh = max(40, min(v_cruise_kmh * (1 - self.margin_factor), v_cruise_kmh))
     elif v_cruise_kmh > 50:
+      target_v_kmh = max(35, min(v_cruise_kmh * (1 - self.margin_factor), v_cruise_kmh))
+    elif v_cruise_kmh > 40:
       target_v_kmh = max(30, min(v_cruise_kmh * (1 - self.margin_factor), v_cruise_kmh))
+    elif v_cruise_kmh > 30:
+      target_v_kmh = max(25, min(v_cruise_kmh * (1 - self.margin_factor), v_cruise_kmh))
     else:
       target_v_kmh = max(20, min(v_cruise_kmh * (1 - self.margin_factor), v_cruise_kmh))
 
