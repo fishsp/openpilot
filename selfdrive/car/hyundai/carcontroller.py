@@ -287,9 +287,9 @@ class CarController(CarControllerBase):
         22.22: {"jerk": 0.2, "accel": 0.5},  # 80 km/h
       }
       eco_accel_limits_tb = {
-        0: {"jerk": 0.3, "accel": 0.8},  # 0 km/h
-        0.56: {"jerk": 0.3, "accel": 0.9},  # 2 km/h
-        1.11: {"jerk": 0.3, "accel": 1.0},  # 4 km/h
+        0: {"jerk": 0.3, "accel": 0.6},  # 0 km/h
+        0.56: {"jerk": 0.3, "accel": 0.7},  # 2 km/h
+        1.11: {"jerk": 0.3, "accel": 0.9},  # 4 km/h
         1.67: {"jerk": 0.3, "accel": 1.1},  # 6 km/h
         2.22: {"jerk": 0.4, "accel": 1.2},  # 8 km/h
         2.78: {"jerk": 0.5, "accel": 1.3},  # 10 km/h
