@@ -47,8 +47,10 @@ class VisionTurnController:
     self._v_target_tmp = MIN_TARGET_V
     self._soft_v_target = 255.
     self._soft_v_target_kmh = 255.
+    self._soft_v_target_kmh_tmp = 255.
     self._soft_v_target_filtered_kmh = 255.
     self.margin_factor = 0.0
+    self.frame = 0
     #new
     self._current_lat_acc = 0.
     self._max_pred_lat_acc = 0.
@@ -179,6 +181,7 @@ class VisionTurnController:
     # == 快速平滑滤波器 ==
     alpha = 0.4 #alpha = 0.4：平滑速度，可调为 0.3～0.5，响应越快就越接近目标速度
     self._soft_v_target_filtered_kmh = alpha * self._soft_v_target_kmh + (1 - alpha) * self._soft_v_target_filtered_kmh
+    self._soft_v_target_kmh_tmp = self._soft_v_target_filtered_kmh
 
     #new 扭矩权重用于降速
     steer = 0.
@@ -186,19 +189,22 @@ class VisionTurnController:
     if steer_saturation_enable:
       steer = abs(sm['carOutput'].actuatorsOutput.steer) #输出的扭矩
       saturation_factor = self.get_steering_saturation_factor(steer)
-      self._soft_v_target *= (1.0 - saturation_factor)
+      self._soft_v_target_kmh_tmp *= (1.0 - saturation_factor)
       self._v_target_tmp *= (1.0 - saturation_factor)
 
     #经典算法的目标速度
     self._v_target_tmp = max(self._v_target_tmp, MIN_TARGET_V)
     self._v_target = self._v_target_tmp
+    v_target_kmh = self._v_target * CV.MS_TO_KPH
+
     #智能软限速逻辑的目标速度
-    _soft_v_target = self._soft_v_target_filtered_kmh * CV.KPH_TO_MS #km/h速度换算成m/s
+    _soft_v_target = self._soft_v_target_kmh_tmp * CV.KPH_TO_MS #km/h速度换算成m/s
     self._soft_v_target = max(_soft_v_target, MIN_TARGET_V)
-    v_target_kmh = self._soft_v_target * CV.MS_TO_KPH
+    soft_v_target_kmh = self._soft_v_target * CV.MS_TO_KPH
 
     #调试信息打印
-    print(f"[VTC] lat_acc: {self._max_pred_lat_acc:5.1f} m/s^2 | steer: {steer:3.1f} | v_cruise: {int(v_cruise_kmh):3d} km/h | v_soft: {int(self._soft_v_target_filtered_kmh):2d} km/h | vtc: {int(v_target_kmh):2d} km/h")
+    if self.frame % 4 == 0:
+      print(f"[VTC] lat_acc: {self._max_pred_lat_acc:5.1f} m/s^2 | steer: {steer:3.1f} | v_cruise: {int(v_cruise_kmh):3d} km/h | v_soft: {int(soft_v_target_kmh):2d} km/h | vtc: {int(v_target_kmh):2d} km/h")
 
   def _state_transition(self):
     if not self._op_enabled or not self._is_enabled or self._gas_pressed or self._v_ego < MIN_TARGET_V:
@@ -223,3 +229,5 @@ class VisionTurnController:
     self._update_params()
     self._update_calculations(sm)
     self._state_transition()
+
+    self.frame += 1
