@@ -184,7 +184,7 @@ class VisionTurnController:
     steer = 0.
     steer_saturation_enable = True
     if steer_saturation_enable:
-      steer = abs(self.sm['carOutput'].actuatorsOutput.steer) #输出的扭矩
+      steer = abs(sm['carOutput'].actuatorsOutput.steer) #输出的扭矩
       saturation_factor = self.get_steering_saturation_factor(steer)
       self._soft_v_target *= (1.0 - saturation_factor)
       self._v_target_tmp *= (1.0 - saturation_factor)
