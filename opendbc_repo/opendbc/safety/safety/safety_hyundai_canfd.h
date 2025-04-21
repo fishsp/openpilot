@@ -90,9 +90,11 @@ static void hyundai_canfd_rx_hook(const CANPacket_t *to_push) {
       if (addr == 0x1cf) {
         cruise_button = GET_BYTE(to_push, 2) & 0x7U;
         main_button = GET_BIT(to_push, 19U);
+        mads_button_press = GET_BIT(to_push, 23U) ? MADS_BUTTON_PRESSED : MADS_BUTTON_NOT_PRESSED;
       } else {
         cruise_button = (GET_BYTE(to_push, 4) >> 4) & 0x7U;
         main_button = GET_BIT(to_push, 34U);
+        mads_button_press = GET_BIT(to_push, 39U) ? MADS_BUTTON_PRESSED : MADS_BUTTON_NOT_PRESSED;
       }
       hyundai_common_cruise_buttons_check(cruise_button, main_button);
     }
@@ -133,8 +135,11 @@ static void hyundai_canfd_rx_hook(const CANPacket_t *to_push) {
       int cruise_status = ((GET_BYTE(to_push, 8) >> 4) & 0x7U);
       bool cruise_engaged = (cruise_status == 1) || (cruise_status == 2);
       hyundai_common_cruise_state_check(cruise_engaged);
+      acc_main_on = GET_BIT(to_push, 66U);
     }
   }
+
+  hyundai_common_reset_acc_main_on_mismatches();
 }
 
 static bool hyundai_canfd_tx_hook(const CANPacket_t *to_send) {
