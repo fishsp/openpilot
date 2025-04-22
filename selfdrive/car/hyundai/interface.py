@@ -105,7 +105,10 @@ class CarInterface(CarInterfaceBase):
 
     ret.stoppingControl = True
     ret.vEgoStarting = 0.1
-    ret.startAccel = 1.6
+    if Params().get_bool("LkasToggle"):
+      ret.startAccel = 1.0
+    else:
+      ret.startAccel = 1.6
     ret.longitudinalActuatorDelay = 0.5
 
     if ret.flags & (HyundaiFlags.HYBRID | HyundaiFlags.EV):
