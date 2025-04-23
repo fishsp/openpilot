@@ -13,6 +13,7 @@ from cereal import custom
 from openpilot.common.conversions import Conversions as CV
 from openpilot.common.params import Params
 from openpilot.selfdrive.controls.lib.sunnypilot.helpers import debug
+from openpilot.common.logger import logger
 
 TARGET_LAT_A = 1.5  # m/s^2
 MIN_TARGET_V = 5  # m/s
@@ -21,6 +22,14 @@ PARAMS_UPDATE_PERIOD = 5.
 
 VisionTurnControllerState = custom.LongitudinalPlanSP.VisionTurnControllerState
 
+
+def safe_int(x, default=-1):
+  try:
+    return int(x)
+  except (ValueError, TypeError):
+    logger.log("[ERROR] Convert to int failed")
+    print("Convert to int failed")
+    return default
 
 def _description_for_state(turn_controller_state):
   if turn_controller_state == VisionTurnControllerState.disabled:
@@ -115,17 +124,49 @@ class VisionTurnController:
     shift = 1.0  # 控制从哪个横向加速度值开始快速变化
     max_value = 0.6  # 最终的最大值
 
-    margin_factor = max_value / (1 + math.exp(-steepness * (max_pred_lat_acc - shift)))
+    # 安全防护：判空/判NaN/范围限制
+    if max_pred_lat_acc is None or math.isnan(max_pred_lat_acc):
+      logger.log("[WARN] max_pred_lat_acc is None or NaN")
+      print("[WARN] max_pred_lat_acc is None or NaN")
+      return 0.0
+
+    # 限制最大/最小值，防止 exp 溢出
+    delta = max_pred_lat_acc - shift
+    delta = max(min(delta, 100.0), -100.0)  # 防止 overflow
+
+    try:
+      margin_factor = max_value / (1 + math.exp(-steepness * delta))
+    except OverflowError as e:
+      logger.log("[WARN] Overflow in margin_factor calc")
+      print(f"[WARN] Overflow in margin_factor calc: {e}, acc={max_pred_lat_acc}")
+      margin_factor = 0.0
+
     return margin_factor
 
   def get_steering_saturation_factor(self, steer):
-    # steer ∈ [-1, 1]
-    saturation = abs(steer)
-    # 从 0.7 开始生效，0.99 饱和
+    # 防御式编程：避免 None 或 NaN 崩溃
+    if steer is None:
+      logger.log("[WARN] steer is None")
+      print("[WARN] steer is None")
+      return 0.0
+
+    if isinstance(steer, float) and math.isnan(steer):
+      logger.log("[WARN] steer is NaN")
+      print("[WARN] steer is NaN")
+      return 0.0
+
+    try:
+      saturation = abs(steer)
+    except Exception as e:
+      logger.log("[WARN] abs(steer) failed")
+      print(f"[WARN] abs(steer) failed: {e}")
+      return 0.0
+
     if saturation < 0.7:
       return 0.0
-    # 映射到一个 0 ~ 0.5 的因子，用来乘以速度
-    return min(0.5, (saturation - 0.7) / 0.29 * 0.5)
+
+    factor = (saturation - 0.7) / 0.29 * 0.5
+    return min(0.5, factor)
 
   def _update_calculations(self, sm):
     #读取 modelV2 预测的横摆角速度（yaw rate） 和预测速度（x方向），rate_plan和vel_plan均为33个元素的数组
@@ -133,8 +174,18 @@ class VisionTurnController:
     vel_plan = np.array(sm['modelV2'].velocity.x)
 
     #计算当前车辆横向加速度（使用方向盘角度计算曲率）
-    current_curvature = abs(
-      sm['carState'].steeringAngleDeg * CV.DEG_TO_RAD / (self._CP.steerRatio * self._CP.wheelbase))
+    try:
+      sr = self._CP.steerRatio
+      wb = self._CP.wheelbase
+      if sr is None or wb is None or sr == 0 or wb == 0:
+        print(f"[WARN] Invalid steerRatio ({sr}) or wheelbase ({wb})")
+        current_curvature = 0.0  # 或者用一个默认值，比如 0.001
+      else:
+        current_curvature = abs(sm['carState'].steeringAngleDeg * CV.DEG_TO_RAD / (sr * wb))
+    except Exception as e:
+      print(f"[CRASH-GUARD] curvature calc failed: {e}")
+      current_curvature = 0.0
+
     self._current_lat_acc = current_curvature * self._v_ego**2
 
     #根据 model 预测的 yaw rate * speed 推出预测横向加速度
@@ -186,11 +237,22 @@ class VisionTurnController:
     #new 扭矩权重用于降速
     steer = 0.
     steer_saturation_enable = True
-    if steer_saturation_enable:
-      steer = abs(sm['carOutput'].actuatorsOutput.steer) #输出的扭矩
-      saturation_factor = self.get_steering_saturation_factor(steer)
-      self._soft_v_target_kmh_tmp *= (1.0 - saturation_factor)
-      self._v_target_tmp *= (1.0 - saturation_factor)
+    if steer_saturation_enable and sm.valid['carOutput']:
+      try:
+        raw_steer = sm['carOutput'].actuatorsOutput.steer
+        # 判空、判 NaN
+        if raw_steer is not None and not math.isnan(raw_steer):
+          steer = abs(raw_steer)
+          saturation_factor = self.get_steering_saturation_factor(steer)
+          saturation_factor = min(saturation_factor, 1.0) #限制最大为1.0，防止下面的计算成为负数
+          self._soft_v_target_kmh_tmp *= (1.0 - saturation_factor)
+          self._v_target_tmp *= (1.0 - saturation_factor)
+        else:
+          logger.log("[WARN] steer value invalid")
+          print(f"[WARN] steer value invalid: {raw_steer}")
+      except Exception as e:
+        logger.log("[WARN] Exception accessing carOutput steer")
+        print(f"[WARN] Exception accessing carOutput steer: {e}")
 
     #经典算法的目标速度
     self._v_target_tmp = max(self._v_target_tmp, MIN_TARGET_V)
@@ -204,7 +266,11 @@ class VisionTurnController:
 
     #调试信息打印
     if self.frame % 4 == 0:
-      print(f"[VTC] lat_acc: {self._max_pred_lat_acc:5.1f} m/s^2 | steer: {steer:3.1f} | v_cruise: {int(v_cruise_kmh):3d} km/h | v_soft: {int(soft_v_target_kmh):2d} km/h | vtc: {int(v_target_kmh):2d} km/h")
+      try:
+        print(f"[VTC] lat_acc: {self._max_pred_lat_acc:5.1f} m/s^2 | steer: {steer:3.1f} | v_cruise: {safe_int(v_cruise_kmh):3d} km/h | v_soft: {safe_int(soft_v_target_kmh):2d} km/h | vtc: {safe_int(v_target_kmh):2d} km/h")
+      except Exception as e:
+        logger.log("[WARN] Exception in print VTC information")
+        print(f"[WARN] Exception in print VTC information: {e}")
 
   def _state_transition(self):
     if not self._op_enabled or not self._is_enabled or self._gas_pressed or self._v_ego < MIN_TARGET_V:
