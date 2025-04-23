@@ -186,23 +186,32 @@ class VisionTurnController:
       print(f"[CRASH-GUARD] curvature calc failed: {e}")
       current_curvature = 0.0
 
-    self._current_lat_acc = current_curvature * self._v_ego**2
+    v_ego = self._v_ego
+    if not np.isfinite(v_ego) or v_ego < 0.1:
+      v_ego = 0.1
+
+    self._current_lat_acc = current_curvature * v_ego**2
 
     #根据 model 预测的 yaw rate * speed 推出预测横向加速度
     # get the maximum lat accel from the model
     predicted_lat_accels = rate_plan * vel_plan
+    predicted_lat_accels = np.nan_to_num(predicted_lat_accels, nan=0.0)
     self._max_pred_lat_acc = np.amax(predicted_lat_accels) #使用amax函数找出数组中最大的值
 
     # 经典目标速度计算（保留）
     #计算出最小允许的转弯半径曲率，并反推出一个“能在目标横向加速度下通过这个弯道的安全速度”
     # get the maximum curve based on the current velocity
-    v_ego = max(self._v_ego, 0.1)  # ensure a value greater than 0 for calculations
+    #v_ego = max(self._v_ego, 0.1)  # ensure a value greater than 0 for calculations
     max_curve = self.max_pred_lat_acc / (v_ego**2)
+    max_curve = max(max_curve, 1e-6)  # 避免为 0 或负数
 
     # “如果最大模型预测横向加速度是 3m/s²，我们希望限制它到 1.9m/s²，那就得减速到 sqrt(1.9/3) 倍当前速度”。
     # Get the target velocity for the maximum curve
     self._v_target_tmp = (TARGET_LAT_A / max_curve) ** 0.5
     self._v_target_tmp = max(self._v_target_tmp, MIN_TARGET_V)
+
+    if not np.isfinite(self._v_target_tmp):
+      self._v_target_tmp = MIN_TARGET_V
 
     # == 智能软限速逻辑 ==
     v_cruise_kmh = self._v_cruise * CV.MS_TO_KPH
