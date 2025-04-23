@@ -11,13 +11,13 @@ class Logger:
         self.log_file = None  # 延迟设置日志文件
         self.current_date = None  # 记录日志文件创建时的日期
 
-        self.param_s = Params()
-        self.lkas_toggle = self.param_s.get_bool("LkasToggle")
-        self._initialize_logger()  # 立即初始化日志系统
-        if self.lkas_toggle:
-            self.logger.debug("lkas toggle.")
-        else:
-            self.logger.debug("lkas not toggle.")
+        #self.param_s = Params()
+        #self.lkas_toggle = self.param_s.get_bool("LkasToggle")
+        #self._initialize_logger()  # 立即初始化日志系统
+        #if self.lkas_toggle:
+        #    self.logger.debug("lkas toggle.")
+        #else:
+        #    self.logger.debug("lkas not toggle.")
 
     def _initialize_logger(self):
         """创建日志文件或在日期变更时重新创建"""
@@ -45,7 +45,7 @@ class Logger:
             file_handler.setFormatter(formatter)
             self.logger.addHandler(file_handler)
 
-            self.logger.debug("===== OpenPilot Logger Initialized =====")
+            #self.logger.debug("===== OpenPilot Logger Initialized =====")
 
     def log(self, msg, **kwargs):
         """记录日志，每次检查日期是否变化，必要时重新创建日志文件"""

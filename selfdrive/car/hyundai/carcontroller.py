@@ -73,7 +73,7 @@ class CarController(CarControllerBase):
     self.accel_start = 0.0
     self.clip_accel = False
     self.long_control_time = 0.0
-    self.long_log = False
+    self.long_log = False #是否允许纵向日志打印
     self.jerk_limit_org = 0.0
     self.accel_limit_org = 0.0
     self.normal_log_num = 0
@@ -141,7 +141,7 @@ class CarController(CarControllerBase):
     self.last_accel = 0.0  # 记录上一次的加速度
 
     self.lkas_toggle = self.param_s.get_bool("LkasToggle")
-    logger.log("lkas", LkasToggle=self.lkas_toggle)
+    #logger.log("lkas", LkasToggle=self.lkas_toggle)
 
   def calculate_lead_distance(self, hud_control: car.CarControl.HUDControl) -> float:
     lead_one = self.sm["radarState"].leadOne
@@ -160,8 +160,8 @@ class CarController(CarControllerBase):
 
     self.gasPressed = self.sm['carState'].gasPressed
     gas_press_change = not self.gasPressed and self.gasPressed_last and CS.out.cruiseState.enabled  # 由踩油门变成未踩油门并且开启了巡航
-    if gas_press_change:
-      logger.log("gas press change")
+    #if gas_press_change:
+    #  logger.log("gas press change")
     self.gasPressed_last = self.gasPressed
 
     if not self.CP.pcmCruiseSpeed:
@@ -430,7 +430,7 @@ class CarController(CarControllerBase):
 
           if self.accel_ramp_time >= accel_ramp_time_max:
             self.gas_change_smooth = False #结束除油门变化平滑
-            logger.log("cruise ramp end")
+            #logger.log("cruise ramp end")
         else:
           self.accel_limit = accel_limit  # 3秒后直接使用PID加速度
           self.jerk_limit = jerk_limit  # 3秒后直接使用jerk
