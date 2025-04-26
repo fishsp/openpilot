@@ -39,7 +39,7 @@ def manager_init() -> None:
     ("DisengageOnAccelerator", "0"),
     ("GsmMetered", "1"),
     ("IsMetric", "1"),
-    ("HasAcceptedTerms", "0"),
+    ("HasAcceptedTerms", "1"),
     ("LanguageSetting", "main_zh-CHS"),
     ("OpenpilotEnabledToggle", "1"),
     ("LongitudinalPersonality", str(custom.LongitudinalPersonalitySP.standard)),
