@@ -450,7 +450,7 @@ class CarController(CarControllerBase):
       # 通过算法对加速度进行平滑
       #if self.hkg_can_smooth_stop:
         #accel = self.smooth_accel(accel, speed, DT_CTRL)
-      accel = self.smooth_accel(accel, speed, DT_CTRL)
+      #accel = self.smooth_accel(accel, speed, DT_CTRL)
 
       self.make_jerk(CS, accel, actuators)
 
