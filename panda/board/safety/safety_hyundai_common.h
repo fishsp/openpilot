@@ -36,6 +36,10 @@ bool hyundai_canfd_hda2 = false;
 extern bool hyundai_alt_limits;
 bool hyundai_alt_limits = false;
 
+// ESCC
+extern bool hyundai_escc;
+bool hyundai_escc = true;
+
 static uint8_t hyundai_last_button_interaction;  // button messages since the user pressed an enable button
 
 void hyundai_common_init(uint16_t param) {
@@ -76,7 +80,7 @@ void hyundai_common_cruise_state_check(const bool cruise_engaged) {
     if (!cruise_engaged) {
       if(controls_allowed) print("controls_allowed1 = false\n");
       controls_allowed = false;
-      
+
     }
     cruise_engaged_prev = cruise_engaged;
   }

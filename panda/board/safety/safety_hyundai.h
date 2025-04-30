@@ -49,8 +49,15 @@ static const CanMsg HYUNDAI_TX_MSGS[] = {
   {.msg = {{0x386, 0, 8, .check_checksum = !(legacy), .max_counter = (legacy) ? 0U : 15U, .frequency = 100U}, { 0 }, { 0 }}}, \
   {.msg = {{0x394, 0, 8, .check_checksum = !(legacy), .max_counter = (legacy) ? 0U : 7U, .frequency = 100U}, { 0 }, { 0 }}},  \
 
+#define HYUNDAI_SCC11_ADDR_CHECK(scc_bus)                                                                            \
+  {.msg = {{0x420, (scc_bus), 8, .ignore_checksum = true, .ignore_counter = true, .frequency = 50U}, { 0 }, { 0 }}}, \
+
 #define HYUNDAI_SCC12_ADDR_CHECK(scc_bus)                                                                                  \
   {.msg = {{0x421, (scc_bus), 8, .check_checksum = true, .max_counter = 15U, .frequency = 50U}, { 0 }, { 0 }}}, \
+
+#define HYUNDAI_LDA_BUTTON_ADDR_CHECK \
+  {.msg = {{0x391, 0, 8, .ignore_checksum = true, .ignore_counter = true, .frequency = 50U}, { 0 }, { 0 }}}, \
+
 
 static bool hyundai_legacy = false;
 static bool hyundai_cruise_buttons_alt = false;
@@ -147,7 +154,7 @@ static void hyundai_rx_hook(const CANPacket_t *to_push) {
 
     // ACC steering wheel buttons
     if (addr == 1007) hyundai_cruise_buttons_alt = true; // CASPER_EV: 1007
-    if (addr == 1007) {      
+    if (addr == 1007) {
       int cruise_button = (GET_BYTE(to_push, 7) >> 4) & 0x07U;
       bool main_button = GET_BIT(to_push, 58U);
       hyundai_common_cruise_buttons_check(cruise_button, main_button);
@@ -360,15 +367,25 @@ static safety_config hyundai_init_carrot(bool legacy_car) {
       {0x4F1, 0, 4}, // CLU11 Bus 0
     };
 
+    static const CanMsg HYUNDAI_LONG_ESCC_TX_MSGS[] = {
+      HYUNDAI_LONG_COMMON_TX_MSGS(0)
+    };
+
     safety_config ret;
-    if (hyundai_camera_scc) {
+    if (hyundai_escc) {
+        SET_TX_MSGS(HYUNDAI_LONG_ESCC_TX_MSGS, ret);
+    }
+    else if (hyundai_camera_scc)
+    {
         static RxCheck hyundai_cam_scc_rx_checks[] = {
           HYUNDAI_COMMON_RX_CHECKS(false)
           HYUNDAI_SCC12_ADDR_CHECK(2)
+          HYUNDAI_SCC11_ADDR_CHECK(2)
         };
         static RxCheck hyundai_cam_scc_rx_checks_legacy[] = {
           HYUNDAI_COMMON_RX_CHECKS(true)
           HYUNDAI_SCC12_ADDR_CHECK(2)
+          HYUNDAI_SCC11_ADDR_CHECK(2)
         };
         if(legacy_car) ret = BUILD_SAFETY_CFG(hyundai_cam_scc_rx_checks_legacy, HYUNDAI_CAMERA_SCC_TX_MSGS);
         else ret = BUILD_SAFETY_CFG(hyundai_cam_scc_rx_checks, HYUNDAI_CAMERA_SCC_TX_MSGS);
@@ -378,13 +395,13 @@ static safety_config hyundai_init_carrot(bool legacy_car) {
           HYUNDAI_COMMON_RX_CHECKS(false)
           // Use CLU11 (buttons) to manage controls allowed instead of SCC cruise state
           {.msg = {{0x4F1, 0, 4, .check_checksum = false, .max_counter = 15U, .frequency = 50U}, { 0 }, { 0 }}
-},
+           },
         };
         static RxCheck hyundai_long_rx_checks_legacy[] = {
           HYUNDAI_COMMON_RX_CHECKS(true)
           // Use CLU11 (buttons) to manage controls allowed instead of SCC cruise state
           {.msg = {{0x4F1, 0, 4, .check_checksum = false, .max_counter = 15U, .frequency = 50U}, { 0 }, { 0 }}
-},
+          },
         };
 
         if(legacy_car) ret = BUILD_SAFETY_CFG(hyundai_long_rx_checks_legacy, HYUNDAI_LONG_TX_MSGS);
@@ -394,10 +411,12 @@ static safety_config hyundai_init_carrot(bool legacy_car) {
         static RxCheck hyundai_rx_checks[] = {
            HYUNDAI_COMMON_RX_CHECKS(false)
            HYUNDAI_SCC12_ADDR_CHECK(0)
+           HYUNDAI_SCC11_ADDR_CHECK(0)
         };
         static RxCheck hyundai_rx_checks_legacy[] = {
            HYUNDAI_COMMON_RX_CHECKS(true)
            //HYUNDAI_SCC12_ADDR_CHECK(0)
+           HYUNDAI_SCC11_ADDR_CHECK(0)
         };
 
         if(legacy_car) ret = BUILD_SAFETY_CFG(hyundai_rx_checks_legacy, HYUNDAI_TX_MSGS);
@@ -431,36 +450,6 @@ static safety_config hyundai_init(uint16_t param) {
   hyundai_common_init(param);
   hyundai_legacy = false;
   return hyundai_init_carrot(hyundai_legacy);
-
-  if (hyundai_camera_scc) {
-    hyundai_longitudinal = false;
-  }
-
-  safety_config ret;
-  if (hyundai_longitudinal) {
-    static RxCheck hyundai_long_rx_checks[] = {
-      HYUNDAI_COMMON_RX_CHECKS(false)
-      // Use CLU11 (buttons) to manage controls allowed instead of SCC cruise state
-      {.msg = {{0x4F1, 0, 4, .check_checksum = false, .max_counter = 15U, .frequency = 50U}, { 0 }, { 0 }}},
-    };
-
-    ret = BUILD_SAFETY_CFG(hyundai_long_rx_checks, HYUNDAI_LONG_TX_MSGS);
-  } else if (hyundai_camera_scc) {
-    static RxCheck hyundai_cam_scc_rx_checks[] = {
-      HYUNDAI_COMMON_RX_CHECKS(false)
-      HYUNDAI_SCC12_ADDR_CHECK(2)
-    };
-
-    ret = BUILD_SAFETY_CFG(hyundai_cam_scc_rx_checks, HYUNDAI_CAMERA_SCC_TX_MSGS);
-  } else {
-    static RxCheck hyundai_rx_checks[] = {
-       HYUNDAI_COMMON_RX_CHECKS(false)
-       HYUNDAI_SCC12_ADDR_CHECK(0)
-    };
-
-    ret = BUILD_SAFETY_CFG(hyundai_rx_checks, HYUNDAI_TX_MSGS);
-  }
-  return ret;
 }
 
 static safety_config hyundai_legacy_init(uint16_t param) {
@@ -468,6 +457,7 @@ static safety_config hyundai_legacy_init(uint16_t param) {
   static RxCheck hyundai_legacy_rx_checks[] = {
     HYUNDAI_COMMON_RX_CHECKS(true)
     //HYUNDAI_SCC12_ADDR_CHECK(0)
+    HYUNDAI_SCC11_ADDR_CHECK(0)
   };
 
   hyundai_common_init(param);
