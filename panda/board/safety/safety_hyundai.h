@@ -26,6 +26,19 @@ const LongitudinalLimits HYUNDAI_LONG_LIMITS = {
   .min_accel = -400,  // 1/100 m/s2
 };
 
+#define HYUNDAI_COMMON_TX_MSGS(scc_bus) \
+  {0x340, 0,       8, true},   /* LKAS11 Bus 0                              */ \
+  {0x4F1, scc_bus, 4, false},  /* CLU11 Bus 0 (radar-SCC) or 2 (camera-SCC) */ \
+  {0x485, 0,       4, false},  /* LFAHDA_MFC Bus 0                          */ \
+
+#define HYUNDAI_LONG_COMMON_TX_MSGS(scc_bus) \
+  HYUNDAI_COMMON_TX_MSGS(scc_bus)                                             \
+  {0x420, 0,       8, false},           /* SCC11 Bus 0                     */ \
+  {0x421, 0,       8, (scc_bus) == 0},  /* SCC12 Bus 0                     */ \
+  {0x50A, 0,       8, false},           /* SCC13 Bus 0                     */ \
+  {0x389, 0,       8, false},           /* SCC14 Bus 0                     */ \
+  {0x4A2, 0,       2, false},           /* FRT_RADAR11 Bus 0               */ \
+
 static const CanMsg HYUNDAI_TX_MSGS[] = {
   {0x340, 0, 8}, // LKAS11 Bus 0
   {0x4F1, 0, 4}, // CLU11 Bus 0
@@ -427,26 +440,6 @@ static safety_config hyundai_init_carrot(bool legacy_car) {
 
 
 static safety_config hyundai_init(uint16_t param) {
-  static const CanMsg HYUNDAI_LONG_TX_MSGS[] = {
-    {0x340, 0, 8}, // LKAS11 Bus 0
-    {0x4F1, 0, 4}, // CLU11 Bus 0
-    {0x485, 0, 8}, // LFAHDA_MFC Bus 0
-    {0x420, 0, 8}, // SCC11 Bus 0
-    {0x421, 0, 8}, // SCC12 Bus 0
-    {0x50A, 0, 8}, // SCC13 Bus 0
-    {0x389, 0, 8}, // SCC14 Bus 0
-    {0x4A2, 0, 2}, // FRT_RADAR11 Bus 0
-    {0x38D, 0, 8}, // FCA11 Bus 0
-    {0x483, 0, 8}, // FCA12 Bus 0
-    {0x7D0, 0, 8}, // radar UDS TX addr Bus 0 (for radar disable)
-  };
-
-  static const CanMsg HYUNDAI_CAMERA_SCC_TX_MSGS[] = {
-    {0x340, 0, 8}, // LKAS11 Bus 0
-    {0x4F1, 2, 4}, // CLU11 Bus 2
-    {0x485, 0, 8}, // LFAHDA_MFC Bus 0
-  };
-
   hyundai_common_init(param);
   hyundai_legacy = false;
   return hyundai_init_carrot(hyundai_legacy);
