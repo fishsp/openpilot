@@ -50,7 +50,7 @@ static const CanMsg HYUNDAI_TX_MSGS[] = {
   {.msg = {{0x394, 0, 8, .check_checksum = !(legacy), .max_counter = (legacy) ? 0U : 7U, .frequency = 100U}, { 0 }, { 0 }}},  \
 
 #define HYUNDAI_SCC11_ADDR_CHECK(scc_bus)                                                                            \
-  {.msg = {{0x420, (scc_bus), 8, .ignore_checksum = true, .ignore_counter = true, .frequency = 50U}, { 0 }, { 0 }}}, \
+  {.msg = {{0x420, (scc_bus), 8, .check_checksum = false, .check_counter = false, .frequency = 50U}, { 0 }, { 0 }}}, \
 
 #define HYUNDAI_SCC12_ADDR_CHECK(scc_bus)                                                                                  \
   {.msg = {{0x421, (scc_bus), 8, .check_checksum = true, .max_counter = 15U, .frequency = 50U}, { 0 }, { 0 }}}, \
