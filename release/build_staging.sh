@@ -1,4 +1,6 @@
-#!/usr/bin/bash -e
+#!/usr/bin/bash
+set -e
+set -x
 
 # git diff --name-status origin/release3-staging | grep "^A" | less
 
@@ -9,8 +11,10 @@ cd $DIR
 BUILD_DIR=/data/openpilot
 SOURCE_DIR="$(git rev-parse --show-toplevel)"
 
-FILES_SRC="release/files_tici"
-STAGING_BRANCH="staging-c3"
+if [ -z "$STAGING_BRANCH" ]; then
+  echo "STAGING_BRANCH is not set"
+  STAGING_BRANCH=staging-098
+fi
 
 
 # set git identity
@@ -23,15 +27,15 @@ mkdir -p $BUILD_DIR
 cd $BUILD_DIR
 git init
 # set git username/password
-source /data/identity.sh
-git remote add origin https://github.com/sunnyhaibin/sunnypilot.git
-git fetch origin $STAGING_BRANCH
+source $DIR/identity.sh
+git remote add origin https://github.com/fishsp/openpilot.git
+#git fetch origin $STAGING_BRANCH
+git fetch origin release-empty
 
 # do the files copy
 echo "[-] copying files T=$SECONDS"
 cd $SOURCE_DIR
-cp -pR --parents $(cat release/files_common) $BUILD_DIR/
-cp -pR --parents $(cat $FILES_SRC) $BUILD_DIR/
+cp -pR --parents $(./release/release_files.py) $BUILD_DIR/
 
 # in the directory
 cd $BUILD_DIR
@@ -42,25 +46,24 @@ rm -f panda/board/obj/bootstub.panda.bin
 rm -f panda/board/obj/bootstub.panda_h7.bin
 
 VERSION=$(cat common/version.h | awk -F[\"-]  '{print $2}')
-echo "#define COMMA_VERSION \"$VERSION-staging\"" > common/version.h
+echo "#define COMMA_VERSION \"$VERSION-release\"" > common/version.h
 
 echo "[-] committing version $VERSION T=$SECONDS"
 git add -f .
-git commit -a -m "sunnypilot v$VERSION release"
-git branch --set-upstream-to=origin/$STAGING_BRANCH
-
-# Build panda firmware
-pushd panda/
-scons -u .
-mv board/obj/panda.bin.signed /tmp/panda.bin.signed
-mv board/obj/panda_h7.bin.signed /tmp/panda_h7.bin.signed
-mv board/obj/bootstub.panda.bin /tmp/bootstub.panda.bin
-mv board/obj/bootstub.panda_h7.bin /tmp/bootstub.panda_h7.bin
-popd
+git commit -a -m "sunnypilot v$VERSION staging"
+#git branch --set-upstream-to=origin/$STAGING_BRANCH
+git branch --set-upstream-to=origin/release-empty
 
 # Build
 export PYTHONPATH="$BUILD_DIR"
-scons -j$(nproc)
+#scons -j$(nproc) --cache-disable
+scons -j$(nproc)  --minimal
+
+# release panda fw
+#scons -j$(nproc) --cache-disable panda/
+scons -j$(nproc) panda/
+
+echo "compile done"
 
 # Ensure no submodules in release
 if test "$(git submodule--helper list | wc -l)" -gt "0"; then
@@ -79,23 +82,21 @@ find . -name 'moc_*' -delete
 find . -name '*.cc' -delete
 find . -name '__pycache__' -delete
 find selfdrive/ui/ -name '*.h' -delete
-rm -rf panda/board panda/certs panda/crypto
 rm -rf .sconsign.dblite Jenkinsfile release/
 rm selfdrive/modeld/models/supercombo.onnx
-#rm models/supercombo_badweights.thneed
 rm -rf selfdrive/ui/replay/
-# Move back signed panda fw
-mkdir -p panda/board/obj
-mv /tmp/panda.bin.signed panda/board/obj/panda.bin.signed
-mv /tmp/panda_h7.bin.signed panda/board/obj/panda_h7.bin.signed
-mv /tmp/bootstub.panda.bin panda/board/obj/bootstub.panda.bin
-mv /tmp/bootstub.panda_h7.bin panda/board/obj/bootstub.panda_h7.bin
+
+find third_party/ -name '*x86*' -exec rm -r {} +
+find third_party/ -name '*Darwin*' -exec rm -r {} +
+
 
 # Restore third_party
 git checkout third_party/
 
 # Mark as prebuilt release
 touch prebuilt
+
+echo "prebuilt done"
 
 # include source commit hash and build date in commit
 GIT_HASH=$(git --git-dir=$SOURCE_DIR/.git rev-parse HEAD)
@@ -105,21 +106,24 @@ SP_VERSION=$(cat $SOURCE_DIR/common/version.h | awk -F\" '{print $2}')
 # Add built files to git
 git add -f .
 git commit --amend -m "sunnypilot v$VERSION"
-git branch -m staging-c3
+git branch -m $STAGING_BRANCH
 
 # Run tests
 #TEST_FILES="tools/"
 #cd $SOURCE_DIR
 #cp -pR -n --parents $TEST_FILES $BUILD_DIR/
 #cd $BUILD_DIR
-#RELEASE=1 selfdrive/test/test_onroad.py
-#selfdrive/manager/test/test_manager.py
-#selfdrive/car/tests/test_car_interfaces.py
+#RELEASE=1 pytest -n0 -s selfdrive/test/test_onroad.py
+#system/manager/test/test_manager.py
+#pytest selfdrive/car/tests/test_car_interfaces.py
 #rm -rf $TEST_FILES
 
-if [ ! -z "$PUSH" ]; then
-  echo "[-] pushing T=$SECONDS"
-  git push -f origin $STAGING_BRANCH
+export GIT_SSH_COMMAND="ssh -i /data/gitkey"
+echo "GIT_SSH_COMMAND = $GIT_SSH_COMMAND"
+
+if [ ! -z "$STAGING_BRANCH" ]; then
+  echo "[-] pushing staging T=$SECONDS"
+  git push -f origin $STAGING_BRANCH:$STAGING_BRANCH
 fi
 
 echo "[-] done T=$SECONDS"

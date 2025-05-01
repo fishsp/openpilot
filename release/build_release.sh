@@ -13,7 +13,7 @@ SOURCE_DIR="$(git rev-parse --show-toplevel)"
 
 if [ -z "$RELEASE_BRANCH" ]; then
   echo "RELEASE_BRANCH is not set"
-  exit 1
+  RELEASE_BRANCH=release-098
 fi
 
 
@@ -27,9 +27,10 @@ mkdir -p $BUILD_DIR
 cd $BUILD_DIR
 git init
 # set git username/password
-source /data/identity.sh
-git remote add origin https://github.com/sunnyhaibin/sunnypilot.git
-git fetch origin $RELEASE_BRANCH
+source $DIR/identity.sh
+git remote add origin https://github.com/fishsp/openpilot.git
+#git fetch origin $RELEASE_BRANCH
+git fetch origin release-empty
 
 # do the files copy
 echo "[-] copying files T=$SECONDS"
@@ -50,14 +51,19 @@ echo "#define COMMA_VERSION \"$VERSION-release\"" > common/version.h
 echo "[-] committing version $VERSION T=$SECONDS"
 git add -f .
 git commit -a -m "sunnypilot v$VERSION release"
-git branch --set-upstream-to=origin/$RELEASE_BRANCH
+#git branch --set-upstream-to=origin/$RELEASE_BRANCH
+git branch --set-upstream-to=origin/release-empty
 
 # Build
 export PYTHONPATH="$BUILD_DIR"
-scons -j$(nproc) --minimal
+#scons -j$(nproc) --cache-disable
+scons -j$(nproc)  --minimal
 
 # release panda fw
+#scons -j$(nproc) --cache-disable panda/
 scons -j$(nproc) panda/
+
+echo "compile done"
 
 # Ensure no submodules in release
 if test "$(git submodule--helper list | wc -l)" -gt "0"; then
@@ -98,7 +104,7 @@ SP_VERSION=$(cat $SOURCE_DIR/common/version.h | awk -F\" '{print $2}')
 # Add built files to git
 git add -f .
 git commit --amend -m "sunnypilot v$VERSION"
-git branch -m release-c3
+git branch -m $RELEASE_BRANCH
 
 # Run tests
 #TEST_FILES="tools/"
