@@ -12,7 +12,7 @@ from typing import Any, NamedTuple
 from collections.abc import Callable
 from functools import cache
 
-from cereal import car
+from cereal import car, custom
 from openpilot.common.basedir import BASEDIR
 from openpilot.common.conversions import Conversions as CV
 from openpilot.common.simple_kalman import KF1D, get_kalman_gain
@@ -31,6 +31,7 @@ from openpilot.selfdrive.pandad import can_capnp_to_list
 ButtonType = car.CarState.ButtonEvent.Type
 GearShifter = car.CarState.GearShifter
 EventName = car.CarEvent.EventName
+AccelPersonality = custom.AccelerationPersonality
 
 MAX_CTRL_SPEED = (V_CRUISE_MAX + 4) * CV.KPH_TO_MS
 ACCEL_MAX = 2.0
@@ -292,6 +293,47 @@ class CarInterfaceBase(ABC):
     ret = cls._get_params(ret, candidate, fingerprint, car_fw, experimental_long, docs)
 
     params = Params()
+
+    # new
+    try:
+      val = params.get("vEgoStopping")
+      vEgoStopping = float(val) / 10 if val is not None and val != b'' else 0.5
+      val = params.get("StartAccel")
+      startAccel = float(val) / 10 if val is not None and val != b'' else 0
+      val = params.get("StopAccel")
+      stopAccel = float(val) / 10 if val is not None and val != b'' else 0
+    except AttributeError:
+      startAccel = 0
+      stopAccel = 0.
+      vEgoStopping = 0.
+
+    if vEgoStopping >= 0.1:
+      ret.vEgoStopping = vEgoStopping
+    if stopAccel <= -0.1:
+      ret.stopAccel = stopAccel
+
+    val = params.get("AccelPersonality")
+    if val is not None:
+      try:
+        accel_personality = int(val)
+      except ValueError:
+        accel_personality = AccelPersonality.stock
+    else:
+      accel_personality = AccelPersonality.stock
+
+    if startAccel < 0.1:  # Auto
+      if accel_personality == AccelPersonality.eco:
+        ret.startAccel = 0.6
+      elif accel_personality == AccelPersonality.normal:
+        ret.startAccel = 0.8
+      elif accel_personality == AccelPersonality.sport:
+        ret.startAccel = 1.2
+      else:  # stock
+        ret.startAccel = 1.0
+    else:
+      ret.startAccel = startAccel
+    # new
+
     if ret.steerControlType != car.CarParams.SteerControlType.angle:
       if params.get_bool("EnforceTorqueLateral") or params.get_bool("NNFF"):
         ret = CarInterfaceBase.sp_configure_torque_tune(candidate, ret)
