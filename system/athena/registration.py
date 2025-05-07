@@ -37,7 +37,7 @@ def register(show_spinner=False) -> str | None:
   elif needs_registration:
     if show_spinner:
       spinner = Spinner()
-      spinner.update("registering device")
+      spinner.update("Getting device information")
 
     # Create registration token, in the future, this key will make JWTs directly
     with open(Paths.persist_root()+"/comma/id_rsa.pub") as f1, open(Paths.persist_root()+"/comma/id_rsa") as f2:
@@ -45,31 +45,34 @@ def register(show_spinner=False) -> str | None:
       private_key = f2.read()
 
     # Block until we get the imei
-    disable_dm = params.get_bool("DisableDM")
-    if disable_dm:
+    serial = HARDWARE.get_serial()
+    start_time = time.monotonic()
+    imei1: str | None = None
+    imei2: str | None = None
+    while imei1 is None and imei2 is None and (time.monotonic() - start_time < 120): #获取IMEI号超时时间为120秒
+      try:
+        imei1, imei2 = HARDWARE.get_imei(0), HARDWARE.get_imei(1)
+      except Exception:
+        cloudlog.exception("Error getting imei, trying again...")
+        time.sleep(1)
+
+      if time.monotonic() - start_time > 60 and show_spinner:
+        spinner.update(f"Getting device - serial: {serial}, IMEI: ({imei1}, {imei2})")
+
+    #未获取到IMEI号，则使用固定值代替
+    if imei1 is None and imei2 is None:
       imei1 = '865420071781912'
       imei2 = '865420071781904'
-    else:
-      # Block until we get the imei
-      serial = HARDWARE.get_serial()
-      start_time = time.monotonic()
-      imei1: str | None = None
-      imei2: str | None = None
-      while imei1 is None and imei2 is None:
-        try:
-          imei1, imei2 = HARDWARE.get_imei(0), HARDWARE.get_imei(1)
-        except Exception:
-          cloudlog.exception("Error getting imei, trying again...")
-          time.sleep(1)
-
-        if time.monotonic() - start_time > 60 and show_spinner:
-          spinner.update(f"registering device - serial: {serial}, IMEI: ({imei1}, {imei2})")
+      if show_spinner:
+        spinner.update(f"Getting device - serial: {serial}, IMEI(fix): ({imei1}, {imei2})")
 
     params.put("IMEI", imei1)
     params.put("HardwareSerial", serial)
 
     backoff = 0
     start_time = time.monotonic()
+    if show_spinner:
+      spinner.update("Registering device")
     while True:
       try:
         register_token = jwt.encode({'register': True, 'exp': datetime.now(UTC).replace(tzinfo=None) + timedelta(hours=1)}, private_key, algorithm='RS256')
@@ -89,12 +92,10 @@ def register(show_spinner=False) -> str | None:
         backoff = min(backoff + 1, 15)
         time.sleep(backoff)
 
-      if not disable_dm:
-        if time.monotonic() - start_time > 60 and show_spinner:
-          spinner.update(f"registering device - serial: {serial}, IMEI: ({imei1}, {imei2})")
-      else:
-        if time.monotonic() - start_time > 10 and show_spinner:
-          return UNREGISTERED_DONGLE_ID
+      if time.monotonic() - start_time > 10 and show_spinner:
+        spinner.update(f"registering device - serial: {serial}, IMEI: ({imei1}, {imei2})")
+      if time.monotonic() - start_time > 60:
+        return UNREGISTERED_DONGLE_ID
 
     if show_spinner:
       spinner.close()
