@@ -2789,6 +2789,14 @@ Reboot Required.</source>
         <translation>自动巡航距离(小于此距离时自动开启巡航功能)</translation>
     </message>
     <message>
+        <source>Disable DM</source>
+        <translation>关闭驾驶员监控(重启后生效)</translation>
+    </message>
+    <message>
+        <source>Disable driver monitoring</source>
+        <translation>关闭驾驶员监控，适合C3Lite</translation>
+    </message>
+    <message>
         <source>Stop Distance</source>
         <translation>停车距离(推荐6m)</translation>
     </message>

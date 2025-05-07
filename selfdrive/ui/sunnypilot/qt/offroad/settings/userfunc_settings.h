@@ -176,4 +176,5 @@ private:
 
   LabelControlSP *label_experimental_angle_and_speed;
   LabelControlSP *label_experimental_speed;
+  ParamControlSP *toggle_dm;
 };

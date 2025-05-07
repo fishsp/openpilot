@@ -44,7 +44,8 @@ def dmonitoringd_thread():
     if (sm['driverStateV2'].frameId % 6000 == 0 and
      DM.wheelpos_learner.filtered_stat.n > DM.settings._WHEELPOS_FILTER_MIN_COUNT and
      DM.wheel_on_right == (DM.wheelpos_learner.filtered_stat.M > DM.settings._WHEELPOS_THRESHOLD)):
-      params.put_bool_nonblocking("IsRhdDetected", DM.wheel_on_right)
+      params.put_bool_nonblocking("IsRhdDetected", False)
+      #params.put_bool_nonblocking("IsRhdDetected", DM.wheel_on_right)
 
 def main():
   dmonitoringd_thread()

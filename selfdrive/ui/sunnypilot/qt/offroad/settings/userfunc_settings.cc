@@ -112,6 +112,16 @@ UserFuncPanel::UserFuncPanel(QWidget *parent) : QFrame(parent) {
   */
 
   //============================================================
+  toggle_dm = new ParamControlSP(
+    "DisableDM",
+    tr("Disable DM"),
+    tr("Disable driver monitoring"),
+    "../assets/offroad/icon_blank.png",
+    this
+  );
+  list->addItem(toggle_dm);
+  toggles["DisableDM"] = toggle_dm;
+
   list->addItem(new LabelControlSP(tr("Stop Distance")));
 
   stop_distance = new StopDistance();
@@ -278,6 +288,7 @@ UserFuncPanel::UserFuncPanel(QWidget *parent) : QFrame(parent) {
     start_accel->setEnabled(offroad);
     stop_accel->setEnabled(offroad);
     vego_stopping->setEnabled(offroad);
+    toggle_dm->setEnabled(offroad);
   });
 }
 

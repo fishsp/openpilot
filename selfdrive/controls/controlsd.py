@@ -91,7 +91,7 @@ class Controls:
     # TODO: de-couple controlsd with card/conflate on carState without introducing controls mismatches
     self.car_state_sock = messaging.sub_sock('carState', timeout=20)
 
-    self.d_camera_hardware_missing = self.params.get_bool("DriverCameraHardwareMissing") and not is_registered_device()
+    self.d_camera_hardware_missing = self.params.get_bool("DriverCameraHardwareMissing") #and not is_registered_device()
     if self.d_camera_hardware_missing:
       IGNORE_PROCESSES.update({"dmonitoringd", "dmonitoringmodeld"})
       self.camera_packets.remove("driverCameraState")
@@ -203,6 +203,11 @@ class Controls:
     self.experimental_mode_speed = 0
     self.experimental_mode_and_speed = 0
     self.experimental_mode_angle = 0
+    self.disable_dm = self.params.get_bool("DisableDM")
+    if self.disable_dm:
+      self.params.put_bool_nonblocking("DriverCameraHardwareMissing", True)
+    else:
+      self.params.put_bool_nonblocking("DriverCameraHardwareMissing", False)
     #new
 
     self.accel_personality = self.read_accel_personality_param()
@@ -211,7 +216,7 @@ class Controls:
 
     self.startup_event = get_startup_event(car_recognized, not self.CP.passive, len(self.CP.carFw) > 0)
 
-    if not sounds_available:
+    if not sounds_available and not self.disable_dm: #modify
       self.events.add(EventName.soundsUnavailable, static=True)
     if not car_recognized:
       self.events.add(EventName.carUnrecognized, static=True)
@@ -356,7 +361,7 @@ class Controls:
     num_events = len(self.events)
 
     not_running = {p.name for p in self.sm['managerState'].processes if not p.running and p.shouldBeRunning}
-    if self.sm.recv_frame['managerState'] and (not_running - IGNORE_PROCESSES):
+    if self.sm.recv_frame['managerState'] and (not_running - IGNORE_PROCESSES) and not self.disable_dm: #modify
       self.events.add(EventName.processNotRunning)
       self.process_not_running = True
       if not_running != self.not_running_prev:
@@ -386,7 +391,7 @@ class Controls:
     # generic catch-all. ideally, a more specific event should be added above instead
     has_disable_events = self.events.contains(ET.NO_ENTRY) and (self.events.contains(ET.SOFT_DISABLE) or self.events.contains(ET.IMMEDIATE_DISABLE))
     no_system_errors = (not has_disable_events) or (len(self.events) == num_events)
-    if not self.sm.all_checks() and no_system_errors:
+    if not self.sm.all_checks() and no_system_errors and not self.disable_dm: #modify
       if not self.sm.all_alive():
         self.events.add(EventName.commIssue)
       elif not self.sm.all_freq_ok():
@@ -415,12 +420,13 @@ class Controls:
         self.events.add(EventName.deviceFalling)
       if not self.sm['liveLocationKalman'].inputsOK:
         self.events.add(EventName.locationdTemporaryError)
-      if not self.sm['liveParameters'].valid and not TESTING_CLOSET and (not SIMULATION or REPLAY):
+      if not self.sm['liveParameters'].valid and not TESTING_CLOSET and (not SIMULATION or REPLAY) and not self.disable_dm: #modify
         self.events.add(EventName.paramsdTemporaryError)
 
     # conservative HW alert. if the data or frequency are off, locationd will throw an error
     if any((self.sm.frame - self.sm.recv_frame[s])*DT_CTRL > 10. for s in self.sensor_packets):
-      self.events.add(EventName.sensorDataInvalid)
+      if not self.disable_dm:  # new
+        self.events.add(EventName.sensorDataInvalid)
 
     if not REPLAY:
       # Check for mismatch between openpilot and car's PCM

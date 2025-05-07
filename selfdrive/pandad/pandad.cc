@@ -496,6 +496,13 @@ void panda_state_thread(std::vector<Panda *> pandas, bool spoofing_started) {
 void peripheral_control_thread(Panda *panda, bool no_fan_control) {
   util::set_thread_name("pandad_peripheral_control");
 
+  //new
+  Params params;
+  bool disable_dm = false;
+  uint64_t last_param_check_ms = millis_since_boot();
+  float max_ir_power = MAX_IR_POWER;
+  //new
+
   SubMaster sm({"deviceState", "driverCameraState"});
 
   uint64_t last_driver_camera_t = 0;
@@ -507,6 +514,20 @@ void peripheral_control_thread(Panda *panda, bool no_fan_control) {
 
   while (!do_exit && panda->connected()) {
     sm.update(1000);
+
+    //new
+    uint64_t now_ms = millis_since_boot();
+    if (now_ms - last_param_check_ms >= 1000) {  // 每秒
+      disable_dm = params.getBool("DisableDM");
+      last_param_check_ms = now_ms;
+      if(disable_dm){
+        max_ir_power = 0;
+      }
+      else{
+        max_ir_power = MAX_IR_POWER;
+      }
+    }
+    //new
 
     if (sm.updated("deviceState") && !no_fan_control) {
       // Fan speed
@@ -527,9 +548,9 @@ void peripheral_control_thread(Panda *panda, bool no_fan_control) {
       if (cur_integ_lines <= CUTOFF_IL) {
         ir_pwr = 100.0 * MIN_IR_POWER;
       } else if (cur_integ_lines > SATURATE_IL) {
-        ir_pwr = 100.0 * MAX_IR_POWER;
+        ir_pwr = 100.0 * max_ir_power;
       } else {
-        ir_pwr = 100.0 * (MIN_IR_POWER + ((cur_integ_lines - CUTOFF_IL) * (MAX_IR_POWER - MIN_IR_POWER) / (SATURATE_IL - CUTOFF_IL)));
+        ir_pwr = 100.0 * (MIN_IR_POWER + ((cur_integ_lines - CUTOFF_IL) * (max_ir_power - MIN_IR_POWER) / (SATURATE_IL - CUTOFF_IL)));
       }
     }
 

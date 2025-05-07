@@ -149,6 +149,7 @@ def manager_init() -> None:
     ("TurnSteepNess", "90"),
     ("TurnLatAccel", "10"),
     ("TurnMaxFactor", "6"),
+    ("DisableDM", "1"),
   ]
   if not PC:
     default_params.append(("LastUpdateTime", datetime.datetime.now(datetime.UTC).replace(tzinfo=None).isoformat().encode('utf8')))
