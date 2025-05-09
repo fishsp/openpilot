@@ -178,6 +178,5 @@ std::vector<Model> ModelsFetcher::getModelsFromURL(const QString&url) {
 
 std::vector<Model> ModelsFetcher::getModelsFromURL() {
   //return getModelsFromURL("https://docs.sunnypilot.ai/models_v5.json");
-  return getModelsFromURL("https://docs.sunnypilot.ai/driving_models.json");
-  //eturn getModelsFromURL("https://docs.sunnypilot.ai/driving_models_v2.json");
+  return getModelsFromURL("http://www.caminfo.cn/driving_models_v2.json");
 }
