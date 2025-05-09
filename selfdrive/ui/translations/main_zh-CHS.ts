@@ -2825,6 +2825,18 @@ Reboot Required.</source>
         <translation>停车速度(推荐0.5,下线后可设置)</translation>
     </message>
     <message>
+        <source>JEgoCost</source>
+        <translation>加加速度权重(默认5.0, 越大越平滑)</translation>
+    </message>
+    <message>
+        <source>AChangeCostStart</source>
+        <translation>起步加速度变化权重(默认100, 越大变化越慢)</translation>
+    </message>
+    <message>
+        <source>AChangeCost</source>
+        <translation>巡航加速度变化权重(默认250, 越大变化越慢)</translation>
+    </message>
+    <message>
         <source>Auto</source>
         <translation>自动</translation>
     </message>

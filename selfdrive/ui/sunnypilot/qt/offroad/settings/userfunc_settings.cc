@@ -153,6 +153,21 @@ UserFuncPanel::UserFuncPanel(QWidget *parent) : QFrame(parent) {
   connect(vego_stopping, &OptionControlSP::updateLabels, vego_stopping, &vEgoStopping::refresh);
   list->addItem(vego_stopping);
 
+  list->addItem(new LabelControlSP(tr("JEgoCost")));
+  j_ego_cost = new JEgoCost();
+  connect(j_ego_cost, &OptionControlSP::updateLabels, j_ego_cost, &JEgoCost::refresh);
+  list->addItem(j_ego_cost);
+
+  list->addItem(new LabelControlSP(tr("AChangeCostStart")));
+  a_change_cost_start = new AChangeCostStart();
+  connect(a_change_cost_start, &OptionControlSP::updateLabels, a_change_cost_start, &AChangeCostStart::refresh);
+  list->addItem(a_change_cost_start);
+
+  list->addItem(new LabelControlSP(tr("AChangeCost")));
+  a_change_cost = new AChangeCost();
+  connect(a_change_cost, &OptionControlSP::updateLabels, a_change_cost, &AChangeCost::refresh);
+  list->addItem(a_change_cost);
+
   list->addItem(horizontal_line());
 
   //============================================================
@@ -289,6 +304,10 @@ UserFuncPanel::UserFuncPanel(QWidget *parent) : QFrame(parent) {
     stop_accel->setEnabled(offroad);
     vego_stopping->setEnabled(offroad);
     toggle_dm->setEnabled(offroad);
+
+    j_ego_cost->setEnabled(offroad);
+    a_change_cost_start->setEnabled(offroad);
+    a_change_cost->setEnabled(offroad);
   });
 }
 
@@ -619,6 +638,61 @@ TurnMaxFactor::TurnMaxFactor() : OptionControlSP(
 
 void TurnMaxFactor::refresh() {
   QString option = QString::fromStdString(params.get("TurnMaxFactor"));
+  bool ok;
+  int int_value = option.toInt(&ok);
+  if (ok) {
+    double real_value = int_value / 10.0;
+    setLabel(QString::number(real_value, 'f', 1));
+  } else {
+    setLabel(option);  // 如果转换失败，直接显示原值
+  }
+}
+
+AChangeCost::AChangeCost() : OptionControlSP(
+  "AChangeCost",
+  "",
+  tr("Ago change cost"),
+  "../assets/offroad/icon_blank.png",
+  {100, 500},
+  10) {
+
+  refresh();
+}
+
+void AChangeCost::refresh() {
+  QString option = QString:: fromStdString(params.get("AChangeCost"));
+  setLabel(option);
+}
+
+AChangeCostStart::AChangeCostStart() : OptionControlSP(
+  "AChangeCostStart",
+  "",
+  tr("Ago change cost starting"),
+  "../assets/offroad/icon_blank.png",
+  {50, 200},
+  10) {
+
+  refresh();
+}
+
+void AChangeCostStart::refresh() {
+  QString option = QString:: fromStdString(params.get("AChangeCostStart"));
+  setLabel(option);
+}
+
+JEgoCost::JEgoCost() : OptionControlSP(
+  "JEgoCost",
+  "",
+  tr("Change jerk ego cost."),
+  "../assets/offroad/icon_blank.png",
+  {10, 200},
+  1) {
+
+  refresh();
+}
+
+void JEgoCost::refresh() {
+  QString option = QString::fromStdString(params.get("JEgoCost"));
   bool ok;
   int int_value = option.toInt(&ok);
   if (ok) {

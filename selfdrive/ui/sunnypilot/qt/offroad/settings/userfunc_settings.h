@@ -136,6 +136,37 @@ private:
   Params params;
 };
 
+
+class JEgoCost : public OptionControlSP {
+  Q_OBJECT
+
+public:
+  JEgoCost();
+  void refresh();
+private:
+  Params params;
+};
+
+class AChangeCostStart : public OptionControlSP {
+  Q_OBJECT
+
+public:
+  AChangeCostStart();
+  void refresh();
+private:
+  Params params;
+};
+
+class AChangeCost : public OptionControlSP {
+  Q_OBJECT
+
+public:
+  AChangeCost();
+  void refresh();
+private:
+  Params params;
+};
+
 class UserFuncPanel : public QFrame {
   Q_OBJECT
 
@@ -169,6 +200,10 @@ private:
   TurnSteepNess *turn_steep_ness;
   TurnLatAccel *turn_lat_acc;
   TurnMaxFactor *turn_max_factor;
+
+  JEgoCost *j_ego_cost;
+  AChangeCostStart *a_change_cost_start;
+  AChangeCost *a_change_cost;
 
   LabelControlSP *label_turn_steep_ness;
   LabelControlSP *label_turn_lat_accel;

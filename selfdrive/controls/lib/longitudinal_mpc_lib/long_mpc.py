@@ -11,6 +11,7 @@ from openpilot.selfdrive.modeld.constants import index_function
 from openpilot.selfdrive.car.interfaces import ACCEL_MIN
 from openpilot.selfdrive.controls.radard import _LEAD_ACCEL_TAU
 from openpilot.selfdrive.fishsp.traffic_light import CarrotPlanner
+from openpilot.common.params import Params
 
 if __name__ == '__main__':  # generating code
   from openpilot.third_party.acados.acados_template import AcadosModel, AcadosOcp, AcadosOcpSolver
@@ -262,6 +263,20 @@ def gen_long_ocp():
 
 class LongitudinalMpc:
   def __init__(self, mode='acc', dt=DT_MDL):
+    #new
+    self.params = Params()
+    try:
+      val = self.params.get("JEgoCost")
+      self.jego_cost = float(val)/10 if val is not None and val != b'' else J_EGO_COST
+      val = self.params.get("AChangeCost")
+      self.a_change_cost = int(val) if val is not None and val != b'' else A_CHANGE_COST
+      val = self.params.get("AChangeCostStart")
+      self.a_change_cost_start = int(val) if val is not None and val != b'' else A_CHANGE_COST_STARTING
+    except AttributeError:
+      self.jego_cost = J_EGO_COST
+      self.a_change_cost = A_CHANGE_COST
+      self.a_change_cost_start = A_CHANGE_COST_STARTING
+    #new
     self.mode = mode
     self.dt = dt
     self.solver = AcadosOcpSolverCython(MODEL_NAME, ACADOS_SOLVER_TYPE, N)
@@ -323,8 +338,10 @@ class LongitudinalMpc:
   def set_weights(self, prev_accel_constraint=True, personality=custom.LongitudinalPersonalitySP.standard):
     jerk_factor = get_jerk_factor(personality)
     if self.mode == 'acc':
-      a_change_cost = A_CHANGE_COST if prev_accel_constraint else A_CHANGE_COST_STARTING
-      cost_weights = [X_EGO_OBSTACLE_COST, X_EGO_COST, V_EGO_COST, A_EGO_COST, jerk_factor * a_change_cost, jerk_factor * J_EGO_COST]
+      #a_change_cost = A_CHANGE_COST if prev_accel_constraint else A_CHANGE_COST_STARTING
+      #cost_weights = [X_EGO_OBSTACLE_COST, X_EGO_COST, V_EGO_COST, A_EGO_COST, jerk_factor * a_change_cost, jerk_factor * J_EGO_COST]
+      a_change_cost = self.a_change_cost if prev_accel_constraint else self.a_change_cost_start
+      cost_weights = [X_EGO_OBSTACLE_COST, X_EGO_COST, V_EGO_COST, A_EGO_COST, jerk_factor * a_change_cost, jerk_factor * self.jego_cost]
       constraint_cost_weights = [LIMIT_COST, LIMIT_COST, LIMIT_COST, DANGER_ZONE_COST]
     elif self.mode == 'blended':
       a_change_cost = 40.0 if prev_accel_constraint else 0

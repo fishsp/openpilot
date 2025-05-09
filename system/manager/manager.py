@@ -150,6 +150,9 @@ def manager_init() -> None:
     ("TurnLatAccel", "10"),
     ("TurnMaxFactor", "6"),
     ("DisableDM", "1"),
+    ("AChangeCost", "250"),
+    ("AChangeCostStart", "100"),
+    ("JEgoCost", "50"),
   ]
   if not PC:
     default_params.append(("LastUpdateTime", datetime.datetime.now(datetime.UTC).replace(tzinfo=None).isoformat().encode('utf8')))

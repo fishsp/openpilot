@@ -390,6 +390,9 @@ std::unordered_map<std::string, uint32_t> keys = {
     {"TurnLatAccel", PERSISTENT | BACKUP},
     {"TurnMaxFactor", PERSISTENT | BACKUP},
     {"DisableDM", PERSISTENT | BACKUP},
+    {"AChangeCost", PERSISTENT | BACKUP},
+    {"AChangeCostStart", PERSISTENT | BACKUP},
+    {"JEgoCost", PERSISTENT | BACKUP},
 };
 
 } // namespace
