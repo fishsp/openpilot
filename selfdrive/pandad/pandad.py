@@ -75,7 +75,7 @@ def main() -> NoReturn:
 
       # TODO: remove this in the next AGNOS
       # wait until USB is up before counting
-      if time.monotonic() < 25.:
+      if time.monotonic() < 35.:
         no_internal_panda_count = 0
 
       # Handle missing internal panda
