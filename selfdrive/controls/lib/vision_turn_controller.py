@@ -398,7 +398,7 @@ class VisionTurnController:
     #    print(f"[WARN] Exception in print VTC information: {e}")
 
   def _state_transition(self):
-    if not self._op_enabled or not self._is_enabled or self._gas_pressed or self._v_ego < MIN_TARGET_V:
+    if not self._op_enabled or not self._is_enabled or self._gas_pressed: # or self._v_ego < MIN_TARGET_V:
       self.state = VisionTurnControllerState.disabled
       return
 
