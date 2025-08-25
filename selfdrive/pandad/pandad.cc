@@ -43,6 +43,10 @@
 
 ExitHandler do_exit;
 
+//new
+static float max_ir_power = MAX_IR_POWER;
+//new
+
 bool check_all_connected(const std::vector<Panda *> &pandas) {
   for (const auto& panda : pandas) {
     if (!panda->connected()) {
@@ -396,9 +400,11 @@ void process_peripheral_state(Panda *panda, PubMaster *pm, bool no_fan_control) 
       if (cur_integ_lines <= CUTOFF_IL) {
         ir_pwr = 100.0 * MIN_IR_POWER;
       } else if (cur_integ_lines > SATURATE_IL) {
-        ir_pwr = 100.0 * MAX_IR_POWER;
+        //ir_pwr = 100.0 * MAX_IR_POWER;
+        ir_pwr = 100.0 * max_ir_power;
       } else {
-        ir_pwr = 100.0 * (MIN_IR_POWER + ((cur_integ_lines - CUTOFF_IL) * (MAX_IR_POWER - MIN_IR_POWER) / (SATURATE_IL - CUTOFF_IL)));
+        //ir_pwr = 100.0 * (MIN_IR_POWER + ((cur_integ_lines - CUTOFF_IL) * (MAX_IR_POWER - MIN_IR_POWER) / (SATURATE_IL - CUTOFF_IL)));
+        ir_pwr = 100.0 * (MIN_IR_POWER + ((cur_integ_lines - CUTOFF_IL) * (max_ir_power - MIN_IR_POWER) / (SATURATE_IL - CUTOFF_IL)));
       }
     }
 
@@ -424,18 +430,37 @@ void pandad_run(std::vector<Panda *> &pandas) {
   std::thread send_thread(can_send_thread, pandas, fake_send);
 
   RateKeeper rk("pandad", 100);
-  SubMaster sm({"selfdriveState"});
+  SubMaster sm({"selfdriveState", "carParams"});
   PubMaster pm({"can", "pandaStates", "peripheralState"});
   PandaSafety panda_safety(pandas);
   Panda *peripheral_panda = pandas[0];
   bool engaged = false;
 
+  //new
+  Params params;
+  bool disable_dm = false;
+  uint64_t last_param_check_ms = millis_since_boot();
+  //new
   // Main loop: receive CAN data and process states
   while (!do_exit && check_all_connected(pandas)) {
     can_recv(pandas, &pm);
 
     // Process peripheral state at 20 Hz
     if (rk.frame() % 5 == 0) {
+      //new
+      uint64_t now_ms = millis_since_boot();
+      if (now_ms - last_param_check_ms >= 1000) {  // √ø√Î
+        disable_dm = params.getBool("DisableDM");
+        last_param_check_ms = now_ms;
+        if(disable_dm){
+          max_ir_power = 0;
+        }
+        else{
+          max_ir_power = MAX_IR_POWER;
+        }
+      }
+      //new
+
       process_peripheral_state(peripheral_panda, &pm, no_fan_control);
     }
 
