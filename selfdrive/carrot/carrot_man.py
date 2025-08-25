@@ -1344,6 +1344,9 @@ class CarrotServ:
       self.xSpdLimit = self.nSdiSpeedLimit * self.autoNaviSpeedSafetyFactor
       self.xSpdDist = self.nSdiDist
       self.xSpdType = self.nSdiType
+      #TEST
+      print(f"Update Sdi: nSdiType {self.nSdiType}, nSdiDist {self.nSdiDist}, nSdiSpeedLimit {self.nSdiSpeedLimit}, xSpdLimit {self.xSpdLimit}")
+      #TEST
       if self.nSdiBlockType in [2,3]:
         self.xSpdDist = self.nSdiBlockDist
         self.xSpdType = 4
