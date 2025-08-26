@@ -1351,7 +1351,7 @@ class CarrotServ:
   def _update_sdi(self):
 
     #new
-    if 0:
+    if True:
       if (self.nSdiTypeLast == self.nSdiType and self.nSdiSpeedLimitLast == self.nSdiSpeedLimit and
         self.nSdiDistLast == self.nSdiDist and self.nSdiPlusTypeLast == self.nSdiPlusType  and
         self.autoNaviSpeedCtrlModeLast == self.autoNaviSpeedCtrlMode and self.autoNaviSpeedSafetyFactorLast == self.autoNaviSpeedSafetyFactor):
