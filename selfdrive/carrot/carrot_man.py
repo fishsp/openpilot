@@ -1089,6 +1089,7 @@ class CarrotServ:
 
     #new
     self.sameSpiCamFilter = 0
+    self.autoTurnDistOffset = 0
     #new
 
     self.update_params()
@@ -1115,6 +1116,7 @@ class CarrotServ:
 
     #new
     self.sameSpiCamFilter = self.params.get_int("SameSpiCamFilter")
+    self.autoTurnDistOffset = self.params.get_int("AutoTurnDistOffset")
     #new
 
   def _update_cmd(self):
@@ -1486,7 +1488,7 @@ class CarrotServ:
     turn_dist_for_speed = self.autoTurnControlTurnEnd * turn_speed / 3.6 # 5
     fork_dist_for_speed = self.autoTurnControlTurnEnd * fork_speed / 3.6 # 5
     stop_dist_for_speed = 5
-    start_fork_dist = np.interp(self.nRoadLimitSpeed, [30, 50, 100], [160, 200, 350])
+    start_fork_dist = np.interp(self.nRoadLimitSpeed, [30, 50, 100], [160+self.autoTurnDistOffset, 200+self.autoTurnDistOffset, 350+self.autoTurnDistOffset])
     start_turn_dist = np.interp(self.nTBTNextRoadWidth, [5, 10], [43, 60])
     turn_info_mapping = {
         1: {"type": "turn left", "speed": turn_speed, "dist": turn_dist_for_speed, "start": start_fork_dist},
@@ -1508,6 +1510,7 @@ class CarrotServ:
     atc_dist = mapping["dist"]
     atc_start_dist = mapping["start"]
 
+    #导航给出在转弯距离大于开始转弯距离时，进入准备阶段
     if x_dist_to_turn > atc_start_dist:
       atc_type += " prepare"
       if check_steer:
@@ -1516,7 +1519,8 @@ class CarrotServ:
       if check_steer:
         self.atc_activate_count = max(0, self.atc_activate_count + 1)
       if atc_type in ["turn left", "turn right"] and x_dist_to_turn > start_turn_dist:
-        atc_type = "atc left" if atc_type == "turn left" else "atc right"
+        atc_type = "atc left" if atc_type == "turn left" else "atc right" #类型为atc left/right只是进入转弯准备状态，并不是真的在执行转弯
+    #如果上面的条件都不成立，则atc_type直接就是查表得到的类型，即atc_type = mapping["type"]
 
     if self.autoTurnMapChange > 0 and check_steer:
       #print(f"x_dist_to_turn: {x_dist_to_turn}, atc_start_dist: {atc_start_dist}")
@@ -1530,6 +1534,7 @@ class CarrotServ:
         self.carrotCmd = "DISPLAY";
         self.carrotArg = "ROAD";
 
+    #处理在变道过程中，如果用户接管了方向盘，则退出变道
     if check_steer:
       if 0 <= x_dist_to_turn < atc_start_dist and atc_type in ["fork left", "fork right"]:
         if not self.atc_paused:
@@ -1544,6 +1549,7 @@ class CarrotServ:
 
       if self.atc_paused:
         atc_type += " canceled"
+    # 处理在变道过程中，如果用户接管了方向盘，则退出变道
 
     atc_desired = 250
     if atc_speed > 0 and x_dist_to_turn > 0:
