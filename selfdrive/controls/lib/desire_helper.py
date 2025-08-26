@@ -130,7 +130,7 @@ class DesireHelper:
 
     self.lane_available_last = False
     self.edge_available_last = False
-    self.object_detected_count = 0    
+    self.object_detected_count = 0
 
     self.laneChangeNeedTorque = 0
     self.laneChangeBsd = 0
@@ -148,6 +148,11 @@ class DesireHelper:
     self.blindspot_detected_counter = 0
     self.auto_lane_change_enable = False
 
+    #new
+    self.allowContinuousLaneChange = 0
+    self.autoTurnInNotRoadEdge = 0
+    #new
+
   def check_lane_state(self, modeldata):
     lane_width_left, self.distance_to_road_edge_left, self.distance_to_road_edge_left_far, lane_prob_left = calculate_lane_width(modeldata.laneLines[0], modeldata.laneLineProbs[0],
                                                                                                  modeldata.laneLines[1], modeldata.roadEdges[0])
@@ -155,14 +160,14 @@ class DesireHelper:
                                                                                                     modeldata.laneLines[2], modeldata.roadEdges[1])
     self.lane_exist_left_count.update(lane_prob_left)
     self.lane_exist_right_count.update(lane_prob_right)
-    
+
     self.lane_width_left_queue.append(lane_width_left)
     self.lane_width_right_queue.append(lane_width_right)
     self.lane_width_left = np.mean(self.lane_width_left_queue)
     self.lane_width_right = np.mean(self.lane_width_right_queue)
     self.lane_width_left_diff = self.lane_width_left_queue[-1] - self.lane_width_left_queue[0]
     self.lane_width_right_diff = self.lane_width_right_queue[-1] - self.lane_width_right_queue[0]
-    
+
     min_lane_width = 2.5
     self.lane_width_left_count.update(self.lane_width_left > min_lane_width)
     self.lane_width_right_count.update(self.lane_width_right > min_lane_width)
@@ -189,6 +194,10 @@ class DesireHelper:
       self.laneChangeNeedTorque = self.params.get_int("LaneChangeNeedTorque")
       self.laneChangeBsd = self.params.get_int("LaneChangeBsd")
       self.laneChangeDelay = self.params.get_float("LaneChangeDelay") * 0.1
+      #new
+      self.allowContinuousLaneChange = self.params.get_int("ContinuousLaneChange")
+      self.autoTurnInNotRoadEdge = self.params.get_int("AutoTurnInNotRoadEdge")
+      #new
     self.frame += 1
 
     self.carrot_lane_change_count = max(0, self.carrot_lane_change_count - 1)
@@ -219,25 +228,26 @@ class DesireHelper:
     atc_blinker_state = BLINKER_NONE
     if self.carrot_lane_change_count > 0:
       atc_blinker_state = self.carrot_blinker_state
-    elif carrotMan.carrotCmdIndex != self.carrot_cmd_index_last and carrotMan.carrotCmd == "LANECHANGE":
+    elif carrotMan.carrotCmdIndex != self.carrot_cmd_index_last and carrotMan.carrotCmd == "LANECHANGE": #来自app的命令
       self.carrot_cmd_index_last = carrotMan.carrotCmdIndex
       self.carrot_lane_change_count = int(0.2 / DT_MDL)
       #print(f"Desire lanechange: {carrotMan.carrotArg}")
       self.carrot_blinker_state = BLINKER_LEFT if carrotMan.carrotArg == "LEFT" else BLINKER_RIGHT
-    elif atc_type in ["turn left", "turn right"]:
+    elif atc_type in ["turn left", "turn right"]: #来自carrot_man.py的update_auto_turn函数
       if self.atc_active != 2:
         below_lane_change_speed = True
         self.lane_change_timer = 0.0
         atc_blinker_state = BLINKER_LEFT if atc_type == "turn left" else BLINKER_RIGHT
         self.atc_active = 1
         self.blinker_ignore = False
-    elif atc_type in ["fork left", "fork right", "atc left", "atc right"]:
+    elif atc_type in ["fork left", "fork right", "atc left", "atc right"]: #来自carrot_man.py的update_auto_turn函数
       if self.atc_active != 2:
         below_lane_change_speed = False
-        atc_blinker_state = BLINKER_LEFT if atc_type in ["fork left", "atc left"] else BLINKER_RIGHT        
+        atc_blinker_state = BLINKER_LEFT if atc_type in ["fork left", "atc left"] else BLINKER_RIGHT
         self.atc_active = 1
     else:
       self.atc_active = 0
+    #检测并解决驾驶员转向灯与ATC系统转向灯的冲突，系统和驾驶员打的转向灯不同，则优先驾驶员
     if driver_blinker_state != BLINKER_NONE and atc_blinker_state != BLINKER_NONE and driver_blinker_state != atc_blinker_state:
       atc_blinker_state = BLINKER_NONE
       self.atc_active = 2
@@ -259,7 +269,7 @@ class DesireHelper:
     blinker_state = driver_blinker_state if driver_desire_enabled else atc_blinker_state
 
     lane_line_info = carstate.leftLaneLine if blinker_state == BLINKER_LEFT else carstate.rightLaneLine
-    
+
     if desire_enabled:
       lane_exist_counter = self.lane_exist_left_count.counter if blinker_state == BLINKER_LEFT else self.lane_exist_right_count.counter
       lane_available = self.available_left_lane if blinker_state == BLINKER_LEFT else self.available_right_lane
@@ -325,10 +335,14 @@ class DesireHelper:
         self.lane_change_ll_prob = 1.0
         self.lane_change_delay = self.laneChangeDelay
 
-        # 맨끝차선이 아니면(측면에 차선이 있으면), ATC 자동작동 안함.
+        # 如果不是最后车道(如果侧面有车道)，ATC就不会自动启动。
         #self.auto_lane_change_enable = False if lane_exist_counter > 0 else True
-        self.auto_lane_change_enable = False if lane_exist_counter > 0 or lane_change_available else True
-         
+        # new修改自动变道启用逻辑
+        if self.autoTurnInNotRoadEdge > 0:
+          self.auto_lane_change_enable = True
+        else: #new
+          self.auto_lane_change_enable = False if lane_exist_counter > 0 or lane_change_available else True
+
 
       # LaneChangeState.preLaneChange
       elif self.lane_change_state == LaneChangeState.preLaneChange:
@@ -400,7 +414,11 @@ class DesireHelper:
     self.lane_available_last = lane_available
     self.edge_available_last = edge_available
 
-    self.prev_desire_enabled = desire_enabled
+    #new
+    if not self.allowContinuousLaneChange:
+    #new
+     self.prev_desire_enabled = desire_enabled
+
     steering_pressed = carstate.steeringPressed and \
                      ((carstate.steeringTorque < 0 and blinker_state == BLINKER_LEFT) or (carstate.steeringTorque > 0 and blinker_state == BLINKER_RIGHT))
     if steering_pressed and self.lane_change_state != LaneChangeState.off:
