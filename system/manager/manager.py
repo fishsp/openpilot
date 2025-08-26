@@ -186,6 +186,9 @@ def get_default_params():
     ("ContinuousLaneChange", "0"),
     ("AutoUpRoadLimit", "1"),
     ("AutoUpHighwayRoadLimit", "1"),
+    ("AutoForkDistOffset", "0"),
+    ("AutoUpRoadLimitKMH", "15"),
+    ("AutoUpHighwayRoadLimitKMH", "15"),
     # new
   ]
   return default_params

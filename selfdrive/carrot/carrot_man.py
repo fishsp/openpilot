@@ -1090,6 +1090,11 @@ class CarrotServ:
     #new
     self.sameSpiCamFilter = 0
     self.autoTurnDistOffset = 0
+    self.autoForkDistOffset = 0
+    self.autoUpRoadLimit = 0
+    self.autoUpRoadLimit40KMH = 15
+    self.autoUpHighwayRoadLimit = 0
+    self.autoUpHighwayRoadLimit40KMH = 15
     #new
 
     self.update_params()
@@ -1117,6 +1122,11 @@ class CarrotServ:
     #new
     self.sameSpiCamFilter = self.params.get_int("SameSpiCamFilter")
     self.autoTurnDistOffset = self.params.get_int("AutoTurnDistOffset")
+    self.autoForkDistOffset = self.params.get_int("AutoForkDistOffset")
+    self.autoUpRoadLimit = self.params.get_int("AutoUpRoadLimit")
+    self.autoUpRoadLimit40KMH = self.params.get_int("AutoUpRoadLimit40KMH")
+    self.autoUpHighwayRoadLimit = self.params.get_int("AutoUpHighwayRoadLimit")
+    self.autoUpHighwayRoadLimit40KMH = self.params.get_int("AutoUpHighwayRoadLimit40KMH")
     #new
 
   def _update_cmd(self):
@@ -1488,8 +1498,8 @@ class CarrotServ:
     turn_dist_for_speed = self.autoTurnControlTurnEnd * turn_speed / 3.6 # 5
     fork_dist_for_speed = self.autoTurnControlTurnEnd * fork_speed / 3.6 # 5
     stop_dist_for_speed = 5
-    start_fork_dist = np.interp(self.nRoadLimitSpeed, [30, 50, 100], [160+self.autoTurnDistOffset, 200+self.autoTurnDistOffset, 350+self.autoTurnDistOffset])
-    start_turn_dist = np.interp(self.nTBTNextRoadWidth, [5, 10], [43, 60])
+    start_fork_dist = np.interp(self.nRoadLimitSpeed, [30, 50, 100], [160, 200, 350]) + self.autoForkDistOffset
+    start_turn_dist = np.interp(self.nTBTNextRoadWidth, [5, 10], [43, 60]) + self.autoTurnDistOffset
     turn_info_mapping = {
         1: {"type": "turn left", "speed": turn_speed, "dist": turn_dist_for_speed, "start": start_fork_dist},
         2: {"type": "turn right", "speed": turn_speed, "dist": turn_dist_for_speed, "start": start_fork_dist},
@@ -1983,12 +1993,16 @@ class CarrotServ:
           nRoadLimitSpeed = 120
 
         # 高速公路低限速值处理，低速是自动增加偏移值
-        if nRoadLimitSpeed < 60 and self.roadcate <= 1:  # 高速公路 (0,1: highway)
+        if nRoadLimitSpeed < 60 and ((self.roadcate <= 1 and self.autoUpHighwayRoadLimit) or (self.roadcate > 1 and self.autoUpRoadLimit)):  # 高速公路 (0,1: highway)
+          if self.roadcate <= 1:
+            max_add_val = self.autoUpHighwayRoadLimit40KMH
+          else:
+            max_add_val = self.autoUpRoadLimit40KMH
           if nRoadLimitSpeed <= 40:
-            add_val = 15
+            add_val = max_add_val
           else:
             # 在40~60之间，线性从15减小到0
-            add_val = 15 * (60 - nRoadLimitSpeed) / 20.0
+            add_val = max_add_val * (60 - nRoadLimitSpeed) / 20.0
           nRoadLimitSpeed = min(nRoadLimitSpeed + add_val, 60)
       else:
         nRoadLimitSpeed = 30
