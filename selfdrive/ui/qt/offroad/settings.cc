@@ -870,9 +870,10 @@ CarrotPanel::CarrotPanel(QWidget* parent) : QWidget(parent) {
   speedToggles->addItem(new CValueControl("AutoTurnControlTurnEnd", "ATC: 转弯控制距离时间(6)", "距离=速度*时间", 0, 30, 1));
   speedToggles->addItem(new CValueControl("AutoTurnMapChange", "ATC 自动地图切换(0)", "", 0, 1, 1));
   //new
-  speedToggles->addItem(new CValueControl("AutoForkDistOffset", "ATC 自动变道距离偏移(0m)", "设置距离偏移，可以让自动变道提前", 0, 500, 5));
+  speedToggles->addItem(new CValueControl("AutoHighWayForkDistOffset", "ATC 高速匝道提前变道距离(0m)", "提前自动变道至最左或最右车道的距离", 0, 2000, 5));
+  speedToggles->addItem(new CValueControl("AutoForkDistOffset", "ATC 公路提前变道距离(0m)", "提前自动变道至最左或最右车道的距离", 0, 500, 5));
   speedToggles->addItem(new CValueControl("AutoTurnDistOffset", "ATC 自动转弯距离偏移(0m)", "设置距离偏移，可以让自动转弯提前", -100, 200, 1));
-  speedToggles->addItem(new CValueControl("AutoTurnInNotRoadEdge", "ATC 在中间车道允许自动变道(0)", "0-关闭，1-允许在非最边车道进行自动变道", 0, 1, 1));
+  speedToggles->addItem(new CValueControl("AutoTurnInNotRoadEdge", "ATC 在中间车道允许自动变道(0)", "0-关闭，1-允许在非侧边车道进行自动变道", 0, 1, 1));
   speedToggles->addItem(new CValueControl("ContinuousLaneChange", "ATC 允许自动连续变道(0)", "0-关闭，1-允许连续变多条车道", 0, 1, 1));
   speedToggles->addItem(new CValueControl("AutoUpRoadLimit", "自动提高低于60km/h的公路限速(0)", "0-关闭，1-当普通公路限速低于60时，会把道路限速加上提速偏移值", 0, 1, 1));
   speedToggles->addItem(new CValueControl("AutoUpRoadLimit40KMH", "低于40km/h的公路提速偏移(15km/h)", "允许提高限速时，会把道路限速加上此提速偏移值", 0, 50, 1));

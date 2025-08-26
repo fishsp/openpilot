@@ -1090,6 +1090,7 @@ class CarrotServ:
     #new
     self.sameSpiCamFilter = 0
     self.autoTurnDistOffset = 0
+    self.autoHighWayForkDistOffset = 0
     self.autoForkDistOffset = 0
     self.autoUpRoadLimit = 0
     self.autoUpRoadLimit40KMH = 15
@@ -1123,6 +1124,7 @@ class CarrotServ:
     self.sameSpiCamFilter = self.params.get_int("SameSpiCamFilter")
     self.autoTurnDistOffset = self.params.get_int("AutoTurnDistOffset")
     self.autoForkDistOffset = self.params.get_int("AutoForkDistOffset")
+    self.autoHighWayForkDistOffset = self.params.get_int("AutoHighWayForkDistOffset")
     self.autoUpRoadLimit = self.params.get_int("AutoUpRoadLimit")
     self.autoUpRoadLimit40KMH = self.params.get_int("AutoUpRoadLimit40KMH")
     self.autoUpHighwayRoadLimit = self.params.get_int("AutoUpHighwayRoadLimit")
@@ -1498,7 +1500,10 @@ class CarrotServ:
     turn_dist_for_speed = self.autoTurnControlTurnEnd * turn_speed / 3.6 # 5
     fork_dist_for_speed = self.autoTurnControlTurnEnd * fork_speed / 3.6 # 5
     stop_dist_for_speed = 5
-    start_fork_dist = np.interp(self.nRoadLimitSpeed, [30, 50, 100], [160, 200, 350]) + self.autoForkDistOffset
+    if self.roadcate > 1:
+      start_fork_dist = np.interp(self.nRoadLimitSpeed, [30, 50, 100], [160, 200, 350]) + self.autoForkDistOffset
+    else:
+      start_fork_dist = np.interp(self.nRoadLimitSpeed, [30, 50, 100], [160, 200, 350]) + self.autoHighWayForkDistOffset
     start_turn_dist = np.interp(self.nTBTNextRoadWidth, [5, 10], [43, 60]) + self.autoTurnDistOffset
     turn_info_mapping = {
         1: {"type": "turn left", "speed": turn_speed, "dist": turn_dist_for_speed, "start": start_fork_dist},
