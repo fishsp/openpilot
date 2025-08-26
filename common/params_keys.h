@@ -292,5 +292,10 @@ inline static std::unordered_map<std::string, uint32_t> keys = {
 
     //new
     {"SameSpiCamFilter", PERSISTENT},
+    {"AutoTurnDistOffset", PERSISTENT},
+    {"AutoTurnInNotRoadEdge", PERSISTENT},
+    {"ContinuousLaneChange", PERSISTENT},
+    {"AutoUpRoadLimit", PERSISTENT},
+    {"AutoUpHighwayRoadLimit", PERSISTENT},
     //new
 };
