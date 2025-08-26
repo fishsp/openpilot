@@ -873,7 +873,7 @@ CarrotPanel::CarrotPanel(QWidget* parent) : QWidget(parent) {
   speedToggles->addItem(new CValueControl("AutoTurnDistOffset", "ATC 提前自动变道距离偏移(0m)", "", 0, 500, 5));
   speedToggles->addItem(new CValueControl("AutoTurnInNotRoadEdge", "ATC 在中间车道允许自动变道(0)", "", 0, 1, 1));
   speedToggles->addItem(new CValueControl("ContinuousLaneChange", "ATC 允许自动连续变道(0)", "", 0, 1, 1));
-  speedToggles->addItem(new CValueControl("AutoUpRoadLimit", "自动提高低于60km/h的道路限速(0)", "", 0, 1, 1));
+  speedToggles->addItem(new CValueControl("AutoUpRoadLimit", "自动提高低于60km/h的公路限速(0)", "", 0, 1, 1));
   speedToggles->addItem(new CValueControl("AutoUpHighwayRoadLimit", "自动提高低于60km/h的高速限速(0)", "", 0, 1, 1));
 
   toggles_layout->addWidget(cruiseToggles);
