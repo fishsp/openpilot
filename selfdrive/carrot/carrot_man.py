@@ -1351,17 +1351,18 @@ class CarrotServ:
   def _update_sdi(self):
 
     #new
-    if (self.nSdiTypeLast == self.nSdiType and self.nSdiSpeedLimitLast == self.nSdiSpeedLimit and
-      self.nSdiDistLast == self.nSdiDist and self.nSdiPlusTypeLast == self.nSdiPlusType  and
-      self.autoNaviSpeedCtrlModeLast == self.autoNaviSpeedCtrlMode and self.autoNaviSpeedSafetyFactorLast == self.autoNaviSpeedSafetyFactor):
-      return
+    if 0:
+      if (self.nSdiTypeLast == self.nSdiType and self.nSdiSpeedLimitLast == self.nSdiSpeedLimit and
+        self.nSdiDistLast == self.nSdiDist and self.nSdiPlusTypeLast == self.nSdiPlusType  and
+        self.autoNaviSpeedCtrlModeLast == self.autoNaviSpeedCtrlMode and self.autoNaviSpeedSafetyFactorLast == self.autoNaviSpeedSafetyFactor):
+        return
 
-    self.nSdiTypeLast = self.nSdiType
-    self.nSdiSpeedLimitLast = self.nSdiSpeedLimit
-    self.nSdiDistLast = self.nSdiDist
-    self.nSdiPlusTypeLast = self.nSdiPlusType
-    self.autoNaviSpeedCtrlModeLast = self.autoNaviSpeedCtrlMode
-    self.autoNaviSpeedSafetyFactorLast = self.autoNaviSpeedSafetyFactor
+      self.nSdiTypeLast = self.nSdiType
+      self.nSdiSpeedLimitLast = self.nSdiSpeedLimit
+      self.nSdiDistLast = self.nSdiDist
+      self.nSdiPlusTypeLast = self.nSdiPlusType
+      self.autoNaviSpeedCtrlModeLast = self.autoNaviSpeedCtrlMode
+      self.autoNaviSpeedSafetyFactorLast = self.autoNaviSpeedSafetyFactor
     #new
 
     #sdiBlockType
@@ -1379,11 +1380,11 @@ class CarrotServ:
       elif self.nSdiType == 7 and self.autoNaviSpeedCtrlMode < 3: #7移动测速, autoNaviSpeedCtrlMode<3表示未设置移动测速限速
         self.xSpdLimit = self.xSpdDist = 0
       #new 人为把测速摄像头的距离减去100m
-      else:
-        if self.nSdiDist > 100:
-          self.xSpdDist = self.nSdiDist - 100
-        else:
-          self.xSpdDist = 0
+      #else:
+      #  if self.nSdiDist > 100:
+      #    self.xSpdDist = self.nSdiDist - 100
+      #  else:
+      #    self.xSpdDist = 0
       #new
     elif (self.nSdiPlusType == 22 or self.nSdiType == 22) and self.roadcate > 1 and self.autoNaviSpeedCtrlMode >= 2: # 22-speed bump, roadcate:0,1: highway
       self.xSpdLimit = self.autoNaviSpeedBumpSpeed
