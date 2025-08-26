@@ -851,7 +851,7 @@ CarrotPanel::CarrotPanel(QWidget* parent) : QWidget(parent) {
 
   speedToggles = new ListWidget(this);
   speedToggles->addItem(new CValueControl("AutoCurveSpeedLowerLimit", "弯道: 转弯最低降速限制(30)", "用于限制视觉转弯降速和地图转弯降速的最小速度", 30, 200, 5));
-  speedToggles->addItem(new CValueControl("AutoCurveSpeedFactor", "弯道: 视觉降速横摆角速度系数(100%)", "模型预测横摆角速度*此系数，系数起大降速越多", 50, 300, 1));
+  speedToggles->addItem(new CValueControl("AutoCurveSpeedFactor", "弯道: 视觉降速横摆角速度系数(100%)", "模型预测横摆角速度*此系数，系数越大降速越多", 50, 300, 1));
   speedToggles->addItem(new CValueControl("AutoCurveSpeedAggressiveness", "弯道: 视觉降速目标横向加速度系数(100%)", "目标横向加速度*此系数，系数越小降速越多", 50, 300, 1));
   speedToggles->addItem(new CValueControl("SameSpiCamFilter", "过滤相同的测速数据(0)", "0:关闭, 1:打开", 0, 1, 1));
   speedToggles->addItem(new CValueControl("AutoRoadSpeedLimitOffset", "道路限速偏移(-1)", "-1:不启用(如果不想道路限速生效,设置为-1), 其他值:限速=道路限速+此偏移值", -1, 100, 1));
