@@ -1,4 +1,4 @@
-import fcntl
+ fcntl
 import json
 import math
 import os
@@ -28,6 +28,10 @@ except ImportError:
   SHAPELY_AVAILABLE = False
 
 NetworkType = log.DeviceState.NetworkType
+
+#new
+xroadcate = 8
+#new
 
 nav_type_mapping = {
   12: ("turn", "left", 1),
@@ -252,6 +256,14 @@ class CarrotMan:
 
     self.ip_address = "0.0.0.0"
     self.remote_addr = None
+
+    #new
+    self.autoCurveSpeedFactor = 1.0
+    self.autoCurveSpeedAggressiveness = 1.0
+    self.autoCurveSpeedFactorH = 0.8
+    self.autoCurveSpeedAggressivenessH = 1.2
+    self.param_frame = 0
+    #new
 
     self.turn_speed_last = 250
     self.curvatureFilter = MyMovingAverage(20)
@@ -923,8 +935,12 @@ class CarrotMan:
       print(e)
 
   def carrot_curve_speed_params(self):
-    self.autoCurveSpeedFactor = self.params.get_int("AutoCurveSpeedFactor")*0.01
-    self.autoCurveSpeedAggressiveness = self.params.get_int("AutoCurveSpeedAggressiveness")*0.01
+    if (self.param_frame % 10) == 0:
+      self.autoCurveSpeedFactor = self.params.get_int("AutoCurveSpeedFactor")*0.01
+      self.autoCurveSpeedAggressiveness = self.params.get_int("AutoCurveSpeedAggressiveness")*0.01
+      self.autoCurveSpeedFactorH = self.params.get_int("AutoCurveSpeedFactorH")*0.01
+      self.autoCurveSpeedAggressivenessH = self.params.get_int("AutoCurveSpeedAggressivenessH")*0.01
+    self.param_frame += 1
 
   def carrot_curve_speed(self, sm):
     self.carrot_curve_speed_params()
@@ -942,7 +958,12 @@ class CarrotMan:
     modelData = sm['modelV2']
     v_ego = max(CS.vEgo, 0.1)
     # Set the curve sensitivity
-    orientation_rate = np.array(modelData.orientationRate.z) * self.autoCurveSpeedFactor
+    #new
+    if xroadcate > 1: #普通道路
+      orientation_rate = np.array(modelData.orientationRate.z) * self.autoCurveSpeedFactor
+    else: #高速公路
+      orientation_rate = np.array(modelData.orientationRate.z) * self.autoCurveSpeedFactorH
+    #new
     velocity = np.array(modelData.velocity.x)
 
     # Get the maximum lat accel from the model
@@ -954,7 +975,12 @@ class CarrotMan:
     max_curve = max_pred_lat_acc / (v_ego**2)
 
     # Set the target lateral acceleration
-    adjusted_target_lat_a = TARGET_LAT_A * self.autoCurveSpeedAggressiveness
+    #new
+    if xroadcate > 1: #普通道路
+      adjusted_target_lat_a = TARGET_LAT_A * self.autoCurveSpeedAggressiveness
+    else: #高速公路
+      adjusted_target_lat_a = TARGET_LAT_A * self.autoCurveSpeedAggressivenessH
+    #new
 
     # Get the target velocity for the maximum curve
     #turnSpeed = max(abs(adjusted_target_lat_a / max_curve)**0.5  * 3.6, self.autoCurveSpeedLowerLimit)
@@ -1096,6 +1122,7 @@ class CarrotServ:
     self.autoUpRoadLimit40KMH = 15
     self.autoUpHighwayRoadLimit = 0
     self.autoUpHighwayRoadLimit40KMH = 15
+    self.roadType = -1
     #new
 
     self.update_params()
@@ -1129,6 +1156,7 @@ class CarrotServ:
     self.autoUpRoadLimit40KMH = self.params.get_int("AutoUpRoadLimit40KMH")
     self.autoUpHighwayRoadLimit = self.params.get_int("AutoUpHighwayRoadLimit")
     self.autoUpHighwayRoadLimit40KMH = self.params.get_int("AutoUpHighwayRoadLimit40KMH")
+    self.roadType = self.params.get_int("RoadType")
     #new
 
   def _update_cmd(self):
@@ -1407,7 +1435,7 @@ class CarrotServ:
       #  else:
       #    self.xSpdDist = 0
       #new
-    elif (self.nSdiPlusType == 22 or self.nSdiType == 22) and self.roadcate > 1 and self.autoNaviSpeedCtrlMode >= 2: # 22-speed bump, roadcate:0,1: highway
+    elif (self.nSdiPlusType == 22 or self.nSdiType == 22) and xroadcate > 1 and self.autoNaviSpeedCtrlMode >= 2: # 22-speed bump, roadcate:0,1: highway
       self.xSpdLimit = self.autoNaviSpeedBumpSpeed
       self.xSpdDist = self.nSdiPlusDist if self.nSdiPlusType == 22 else self.nSdiDist
       self.xSpdType = 22
@@ -1500,7 +1528,7 @@ class CarrotServ:
     turn_dist_for_speed = self.autoTurnControlTurnEnd * turn_speed / 3.6 # 5
     fork_dist_for_speed = self.autoTurnControlTurnEnd * fork_speed / 3.6 # 5
     stop_dist_for_speed = 5
-    if self.roadcate > 1:
+    if xroadcate > 1:
       start_fork_dist = np.interp(self.nRoadLimitSpeed, [30, 50, 100], [160, 200, 350]) + self.autoForkDistOffset
     else:
       start_fork_dist = np.interp(self.nRoadLimitSpeed, [30, 50, 100], [160, 200, 350]) + self.autoHighWayForkDistOffset
@@ -1685,8 +1713,13 @@ class CarrotServ:
       self.xSpdType = self.navType = self.xTurnInfo = self.xTurnInfoNext = -1
       self.nSdiType = self.nSdiBlockType = self.nSdiPlusBlockType = -1
       self.nTBTTurnType = self.nTBTTurnTypeNext = -1
-      self.roadcate = 8
+      self.roadcate = 8 #这里为什么要把roadcate强制设置为8?
       self.nGoPosDist = 0
+      # new
+      global xroadcate
+      if self.roadType < 0:
+        xroadcate = self.roadcate
+      #new
     if self.active_carrot <= 1 or self.active_kisa_count > 0:
       self.update_nav_instruction(sm)
 
@@ -1998,8 +2031,8 @@ class CarrotServ:
           nRoadLimitSpeed = 120
 
         # 高速公路低限速值处理，低速是自动增加偏移值
-        if nRoadLimitSpeed < 60 and ((self.roadcate <= 1 and self.autoUpHighwayRoadLimit) or (self.roadcate > 1 and self.autoUpRoadLimit)):  # 高速公路 (0,1: highway)
-          if self.roadcate <= 1:
+        if nRoadLimitSpeed < 60 and ((xroadcate <= 1 and self.autoUpHighwayRoadLimit) or (xroadcate > 1 and self.autoUpRoadLimit)):  # 高速公路 (0,1: highway)
+          if xroadcate <= 1:
             max_add_val = self.autoUpHighwayRoadLimit40KMH
           else:
             max_add_val = self.autoUpRoadLimit40KMH
@@ -2035,6 +2068,13 @@ class CarrotServ:
       self.nSdiPlusBlockSpeed = int(json.get("nSdiPlusBlockSpeed", 0))
       self.nSdiPlusBlockDist = int(json.get("nSdiPlusBlockDist", 0))
       self.roadcate = int(json.get("roadcate", 0))
+      # new
+      global xroadcate
+      if self.roadType < 0:
+        xroadcate = self.roadcate
+      else:
+        xroadcate = self.roadType
+      # new
 
       ## GuidePoint
       self.nTBTDist = int(json.get("nTBTDist", 0))
@@ -2064,7 +2104,7 @@ class CarrotServ:
       self._update_sdi()
       print(
         f"sdi = T {self.nSdiType}, S {self.nSdiSpeedLimit}, PS {self.nSdiPlusType}, " +
-        f"spd = T {self.xSpdType}, S {self.xSpdLimit}, D {self.xSpdDist}, RC {self.roadcate}, " +
+        f"spd = T {self.xSpdType}, S {self.xSpdLimit}, D {self.xSpdDist}, RC {self.roadcate}, xRC {xroadcate}, " +
         f"tbt = T {self.nTBTTurnType}, D {self.nTBTDist}, " +
         f"xtbt = xT {self.xTurnInfo}, xD {self.xDistToTurn}, " +
         f"next = T {self.nTBTTurnTypeNext}, D {self.nTBTDistNext}"
