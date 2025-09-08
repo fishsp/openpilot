@@ -458,3 +458,5 @@ Your continuous love and support are greatly appreciated! Enjoy 🥰
 [^1]:Requires data connection if not using Offline Maps data
 [^2]:At least 50 GB of storage space is required. If you have the 32 GB version of comma three, upgrading with a compatible 250 GB or 1 TB SSD is strongly recommended
 [^4]:Shortened URL for convenience. Full URL is ```smiskol.com/fork/sunnyhaibin/release-c3```
+
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/fishsp/openpilot)
